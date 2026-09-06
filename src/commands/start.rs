@@ -23,7 +23,7 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     let node = LocalNode::new(cfg.bind);
 
     let tcp_loop = tokio::spawn(async move {
-        start_tcp_accept_loop(cfg.bind).await.unwrap();
+        start_tcp_accept_loop(cfg.bind, node.members).await.unwrap();
     });
 
     tokio::spawn(async move {

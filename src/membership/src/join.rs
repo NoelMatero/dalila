@@ -19,6 +19,14 @@ enum TcpBody {
     },
 }
 
+impl TcpBody {
+    pub fn join_request(local_node: LocalNode) -> Self {
+        TcpBody::JoinRequest {
+            from: WireIdentity::new(local_node),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Envelope {
     pub version: u8,
@@ -92,14 +100,12 @@ impl TcpConnection {
 
 // join other nodes starting with a node at addr: join_addr
 pub async fn join(addresses: Vec<SocketAddr>, local_node: LocalNode) -> anyhow::Result<()> {
-    let join_request_body = TcpBody::JoinRequest {
-        from: WireIdentity::new(local_node),
-    };
+    let body = TcpBody::join_request(local_node);
 
     for socket in addresses {
         let stream = TcpStream::connect(socket).await?;
         let mut tcp_connection = TcpConnection::new(stream);
-        tcp_connection.write_frame(&join_request_body).await?;
+        tcp_connection.write_frame(&body).await?;
     }
 
     Ok(())
@@ -114,19 +120,24 @@ pub async fn join(addresses: Vec<SocketAddr>, local_node: LocalNode) -> anyhow::
 
 pub async fn start_tcp_accept_loop(
     addr: SocketAddr,
+    members: Vec<Member>,
 ) -> anyhow::Result<(), Box<dyn std::error::Error + 'static>> {
     let listener = TcpListener::bind(addr).await?;
 
     loop {
         let (stream, addr) = listener.accept().await?;
 
+        let wire_members: Vec<WireMember> =
+            members.clone().into_iter().map(WireMember::from).collect();
         tokio::spawn(async move {
             let mut tcp_connection = TcpConnection::new(stream);
 
             loop {
                 if let Some(frame) = tcp_connection.read_frame().await.unwrap() {
                     match frame {
-                        TcpBody::JoinRequest { from } => handle_join_request(from, addr).await,
+                        TcpBody::JoinRequest { from } => {
+                            handle_join_request(from, addr, wire_members.clone()).await
+                        }
                         TcpBody::JoinResponse { from, members } => {
                             handle_join_response(from, addr, members).await
                         }
@@ -137,8 +148,16 @@ pub async fn start_tcp_accept_loop(
     }
 }
 
-pub async fn handle_join_request(wire_identity: WireIdentity, addr: SocketAddr) {
-    println!("todo: join request. data: {:?}, {:?}", wire_identity, addr);
+pub async fn handle_join_request(
+    recv_wire_identity: WireIdentity,
+    recv_addr: SocketAddr,
+    mut members: Vec<WireMember>,
+) {
+    /*
+
+        return all of the members:
+
+    */
 }
 
 pub async fn handle_join_response(
