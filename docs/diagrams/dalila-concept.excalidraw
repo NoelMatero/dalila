@@ -1,0 +1,2253 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "board-viewer",
+  "elements": [
+    {
+      "id": "concept-title",
+      "type": "text",
+      "x": 0,
+      "y": -115,
+      "width": 273.64799999999997,
+      "height": 30,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a0",
+      "roundness": null,
+      "seed": 1043740003,
+      "version": 1,
+      "versionNonce": 2134690045,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "role": "title",
+        "describes": "concept",
+        "direction": "DOWN"
+      },
+      "text": "Dalila — the whole idea",
+      "fontSize": 24,
+      "fontFamily": 5,
+      "textAlign": "left",
+      "verticalAlign": "middle",
+      "containerId": null,
+      "originalText": "Dalila — the whole idea",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-0",
+      "type": "rectangle",
+      "x": 20,
+      "y": 20,
+      "width": 300,
+      "height": 100,
+      "angle": 0,
+      "strokeColor": "#343a40",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a1",
+      "roundness": null,
+      "seed": 756507750,
+      "version": 1,
+      "versionNonce": 762533706,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-0-label"
+        },
+        {
+          "id": "concept-edge-0",
+          "type": "arrow"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "start"
+      }
+    },
+    {
+      "id": "concept-node-1",
+      "type": "rectangle",
+      "x": 20,
+      "y": 420,
+      "width": 300,
+      "height": 80,
+      "angle": 0,
+      "strokeColor": "#343a40",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a2",
+      "roundness": null,
+      "seed": 1360190391,
+      "version": 1,
+      "versionNonce": 76177425,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-1-label"
+        },
+        {
+          "id": "concept-edge-0",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-1",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-2",
+          "type": "arrow"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "join"
+      }
+    },
+    {
+      "id": "concept-node-2",
+      "type": "rectangle",
+      "x": 600,
+      "y": 1280,
+      "width": 280,
+      "height": 100,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a3",
+      "roundness": null,
+      "seed": 809883784,
+      "version": 5,
+      "versionNonce": 1133574455,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-2-label"
+        },
+        {
+          "id": "concept-edge-4",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-5",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-3",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1788465634562,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "probe"
+      }
+    },
+    {
+      "id": "concept-node-3",
+      "type": "rectangle",
+      "x": 940,
+      "y": 1680,
+      "width": 300,
+      "height": 80,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a4",
+      "roundness": null,
+      "seed": 83815857,
+      "version": 1,
+      "versionNonce": 2051440955,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-3-label"
+        },
+        {
+          "id": "concept-edge-5",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-6",
+          "type": "arrow"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "suspect"
+      }
+    },
+    {
+      "id": "concept-node-4",
+      "type": "rectangle",
+      "x": 620,
+      "y": 420,
+      "width": 320,
+      "height": 100,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a5",
+      "roundness": null,
+      "seed": 1010639682,
+      "version": 1,
+      "versionNonce": 1237157302,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-4-label"
+        },
+        {
+          "id": "concept-edge-6",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-7",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-8",
+          "type": "arrow"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "gossip"
+      }
+    },
+    {
+      "id": "concept-node-5",
+      "type": "rectangle",
+      "x": 480,
+      "y": 820,
+      "width": 320,
+      "height": 100,
+      "angle": 0,
+      "strokeColor": "#0c8599",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a6",
+      "roundness": null,
+      "seed": 2106747123,
+      "version": 5,
+      "versionNonce": 139893977,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-5-label"
+        },
+        {
+          "id": "concept-edge-2",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-8",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-9",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-3",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1788465634562,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "liveset"
+      }
+    },
+    {
+      "id": "concept-node-6",
+      "type": "rectangle",
+      "x": 160,
+      "y": 1280,
+      "width": 340,
+      "height": 100,
+      "angle": 0,
+      "strokeColor": "#2f9e44",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a7",
+      "roundness": null,
+      "seed": 1251301572,
+      "version": 1,
+      "versionNonce": 1877551824,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-6-label"
+        },
+        {
+          "id": "concept-edge-9",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-10",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-11",
+          "type": "arrow"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "route"
+      }
+    },
+    {
+      "id": "concept-node-7",
+      "type": "rectangle",
+      "x": 260,
+      "y": 1680,
+      "width": 200,
+      "height": 80,
+      "angle": 0,
+      "strokeColor": "#868e96",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dotted",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a8",
+      "roundness": null,
+      "seed": 433957469,
+      "version": 1,
+      "versionNonce": 821702855,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-7-label"
+        },
+        {
+          "id": "concept-edge-1",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-4",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-7",
+          "type": "arrow"
+        },
+        {
+          "id": "concept-edge-11",
+          "type": "arrow"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "peers",
+        "state": "external"
+      }
+    },
+    {
+      "id": "concept-node-8",
+      "type": "rectangle",
+      "x": 200,
+      "y": 1060,
+      "width": 180,
+      "height": 80,
+      "angle": 0,
+      "strokeColor": "#868e96",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dotted",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "a9",
+      "roundness": null,
+      "seed": 126793502,
+      "version": 1,
+      "versionNonce": 803607362,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-node-8-label"
+        },
+        {
+          "id": "concept-edge-10",
+          "type": "arrow"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "node": "clients",
+        "state": "external"
+      }
+    },
+    {
+      "id": "concept-edge-0",
+      "type": "arrow",
+      "x": 162,
+      "y": 112,
+      "width": 0,
+      "height": 314.1333333333333,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aA",
+      "roundness": null,
+      "seed": 1505885433,
+      "version": 1,
+      "versionNonce": 1599694787,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-0-label"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "start",
+          "to": "join"
+        }
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          0,
+          157.06666666666666
+        ],
+        [
+          0,
+          313.6333333333333
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-0",
+        "focus": 0.053333333333333344,
+        "gap": 8
+      },
+      "endBinding": {
+        "elementId": "concept-node-1",
+        "focus": -0.053333333333333226,
+        "gap": 6.133333333333326
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-1",
+      "type": "arrow",
+      "x": 112,
+      "y": 506.1333333333333,
+      "width": 187.66666666666669,
+      "height": 1168.2666666666664,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dotted",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aB",
+      "roundness": null,
+      "seed": 1615514736,
+      "version": 1,
+      "versionNonce": 773840588,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-1-label"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "join",
+          "to": "peers"
+        },
+        "state": "external"
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          0,
+          338.98333333333323
+        ],
+        [
+          0,
+          508.4749999999999
+        ],
+        [
+          0,
+          677.9666666666666
+        ],
+        [
+          0,
+          1060.2666666666664
+        ],
+        [
+          187.66666666666669,
+          1060.2666666666664
+        ],
+        [
+          187.66666666666669,
+          1167.7666666666664
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-1",
+        "focus": 0.38666666666666666,
+        "gap": 6.133333333333326
+      },
+      "endBinding": {
+        "elementId": "concept-node-7",
+        "focus": -0.6033333333333335,
+        "gap": 5.600000000000364
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-2",
+      "type": "arrow",
+      "x": 168.36956521739123,
+      "y": 505.6333333333332,
+      "width": 428.4744347826088,
+      "height": 307.4666666666668,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aC",
+      "roundness": null,
+      "seed": 18337695,
+      "version": 3,
+      "versionNonce": 889166265,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-2-label"
+        }
+      ],
+      "updated": 1788465634563,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "join",
+          "to": "liveset"
+        }
+      },
+      "points": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          43.63043478260877,
+          39.16666666666674
+        ],
+        [
+          350.8691014492754,
+          39.16666666666674
+        ],
+        [
+          427.9744347826088,
+          39.16666666666674
+        ],
+        [
+          427.9744347826088,
+          307.9666666666668
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-1",
+        "focus": -0.27999999999999997,
+        "gap": 6.133333333333326
+      },
+      "endBinding": {
+        "elementId": "concept-node-5",
+        "focus": -0.2728500000000004,
+        "gap": 6.400000000000091
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-3",
+      "type": "arrow",
+      "x": 659.7331552269803,
+      "y": 925.9000000000002,
+      "width": 73.05084477301978,
+      "height": 347.1999999999997,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aD",
+      "roundness": null,
+      "seed": 1149341070,
+      "version": 51,
+      "versionNonce": 1784177655,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-3-label"
+        }
+      ],
+      "updated": 1788465634564,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "liveset",
+          "to": "probe"
+        }
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          43.27751143968635,
+          19.699999999999704
+        ],
+        [
+          73.05084477301978,
+          19.699999999999704
+        ],
+        [
+          73.05084477301978,
+          152.81333333333293
+        ],
+        [
+          73.05084477301978,
+          201.53499999999974
+        ],
+        [
+          73.05084477301978,
+          250.25666666666632
+        ],
+        [
+          73.05084477301978,
+          347.6999999999997
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-5",
+        "focus": -0.3938166666666668,
+        "gap": 6.400000000000091
+      },
+      "endBinding": {
+        "elementId": "concept-node-2",
+        "focus": -0.051542857142856606,
+        "gap": 6.400000000000091
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-4",
+      "type": "arrow",
+      "x": 686.1173333333335,
+      "y": 1385.9,
+      "width": 306.45066666666685,
+      "height": 287.9999999999998,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dotted",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aE",
+      "roundness": null,
+      "seed": 504926469,
+      "version": 3,
+      "versionNonce": 1358636471,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-4-label"
+        }
+      ],
+      "updated": 1788465634564,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "probe",
+          "to": "peers"
+        },
+        "state": "external"
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          -1.1368683772161603e-13,
+          180.49999999999977
+        ],
+        [
+          -110.82533333333345,
+          180.49999999999977
+        ],
+        [
+          -306.4506666666668,
+          180.49999999999977
+        ],
+        [
+          -306.45066666666685,
+          288.4999999999998
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-2",
+        "focus": 0.38487619047618987,
+        "gap": 6.400000000000091
+      },
+      "endBinding": {
+        "elementId": "concept-node-7",
+        "focus": 0.19666666666666646,
+        "gap": 5.600000000000136
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-5",
+      "type": "arrow",
+      "x": 754.8222506012656,
+      "y": 1385.9,
+      "width": 285.9697493987345,
+      "height": 287.9999999999998,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aF",
+      "roundness": null,
+      "seed": 2046589932,
+      "version": 3,
+      "versionNonce": 2015057623,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-5-label"
+        }
+      ],
+      "updated": 1788465634564,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "probe",
+          "to": "suspect"
+        }
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          24.628416065401098,
+          19.699999999999818
+        ],
+        [
+          273.6990827320677,
+          19.699999999999818
+        ],
+        [
+          285.9697493987345,
+          19.699999999999818
+        ],
+        [
+          285.9697493987345,
+          288.4999999999998
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-2",
+        "focus": -0.2817904761904767,
+        "gap": 6.400000000000091
+      },
+      "endBinding": {
+        "elementId": "concept-node-3",
+        "focus": -0.328053333333332,
+        "gap": 5.600000000000136
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-6",
+      "type": "arrow",
+      "x": 1140.7920000000001,
+      "y": 1674.3999999999999,
+      "width": 274.2640000000001,
+      "height": 1161.6,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aG",
+      "roundness": null,
+      "seed": 1049947643,
+      "version": 1,
+      "versionNonce": 869589109,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-6-label"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "suspect",
+          "to": "gossip"
+        }
+      },
+      "points": [
+        [
+          0,
+          -0.5
+        ],
+        [
+          0,
+          -108
+        ],
+        [
+          -59,
+          -108
+        ],
+        [
+          -59,
+          -658.932
+        ],
+        [
+          -59,
+          -1129.6
+        ],
+        [
+          -274.2640000000001,
+          -1129.6
+        ],
+        [
+          -274.2640000000001,
+          -1161.1
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-3",
+        "focus": 0.3386133333333359,
+        "gap": 5.600000000000136
+      },
+      "endBinding": {
+        "elementId": "concept-node-4",
+        "focus": -0.5408000000000007,
+        "gap": 7.2000000000000455
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-7",
+      "type": "arrow",
+      "x": 786.528,
+      "y": 512.8,
+      "width": 493.1173333333334,
+      "height": 1161.6,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dotted",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aH",
+      "roundness": null,
+      "seed": 288128682,
+      "version": 1,
+      "versionNonce": 1554619774,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-7-label"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "gossip",
+          "to": "peers"
+        },
+        "state": "external"
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          0,
+          56
+        ],
+        [
+          126.25600000000009,
+          56
+        ],
+        [
+          126.25600000000009,
+          764.2306666666666
+        ],
+        [
+          126.25600000000009,
+          1077.6
+        ],
+        [
+          -366.86133333333333,
+          1077.6
+        ],
+        [
+          -366.86133333333333,
+          1161.1
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-4",
+        "focus": -0.040800000000000794,
+        "gap": 7.2000000000000455
+      },
+      "endBinding": {
+        "elementId": "concept-node-7",
+        "focus": 0.5966666666666665,
+        "gap": 5.600000000000136
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-8",
+      "type": "arrow",
+      "x": 706.528,
+      "y": 526.7,
+      "width": 97.57014500732316,
+      "height": 286.39999999999986,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aI",
+      "roundness": null,
+      "seed": 117896033,
+      "version": 3,
+      "versionNonce": 1630927513,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-8-label"
+        }
+      ],
+      "updated": 1788465634564,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "gossip",
+          "to": "liveset"
+        }
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          0,
+          24.139666666666585
+        ],
+        [
+          0,
+          62.17933333333326
+        ],
+        [
+          0,
+          138.2586666666666
+        ],
+        [
+          0,
+          178.89999999999986
+        ],
+        [
+          -3.5173333333333403,
+          178.89999999999986
+        ],
+        [
+          -97.57014500732316,
+          286.89999999999986
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-4",
+        "focus": 0.45919999999999916,
+        "gap": 7.2000000000000455
+      },
+      "endBinding": {
+        "elementId": "concept-node-5",
+        "focus": 0.3938166666666668,
+        "gap": 6.400000000000091
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-9",
+      "type": "arrow",
+      "x": 596.344,
+      "y": 925.9000000000002,
+      "width": 200.01066666666668,
+      "height": 347.1999999999995,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aJ",
+      "roundness": null,
+      "seed": 1502898360,
+      "version": 3,
+      "versionNonce": 2108505977,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-9-label"
+        }
+      ],
+      "updated": 1788465634564,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "liveset",
+          "to": "route"
+        }
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          0,
+          239.6999999999997
+        ],
+        [
+          -28.005333333333283,
+          239.6999999999997
+        ],
+        [
+          -200.01066666666668,
+          239.6999999999997
+        ],
+        [
+          -200.01066666666668,
+          347.6999999999995
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-5",
+        "focus": 0.2728500000000004,
+        "gap": 6.400000000000091
+      },
+      "endBinding": {
+        "elementId": "concept-node-6",
+        "focus": 0.39019607843137244,
+        "gap": 6.400000000000091
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-10",
+      "type": "arrow",
+      "x": 283,
+      "y": 1133.6,
+      "width": 0,
+      "height": 140,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dotted",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aK",
+      "roundness": null,
+      "seed": 1589196278,
+      "version": 1,
+      "versionNonce": 501205850,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "clients",
+          "to": "route"
+        },
+        "state": "external"
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          0,
+          139.5
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-8",
+        "focus": 0.07777777777777768,
+        "gap": 6.400000000000091
+      },
+      "endBinding": {
+        "elementId": "concept-node-6",
+        "focus": -0.276470588235294,
+        "gap": 6.400000000000091
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-edge-11",
+      "type": "arrow",
+      "x": 339.6666666666667,
+      "y": 1373.6,
+      "width": 0,
+      "height": 300.79999999999995,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dotted",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aL",
+      "roundness": null,
+      "seed": 777280135,
+      "version": 1,
+      "versionNonce": 44870049,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "concept-edge-11-label"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept",
+        "edge": {
+          "from": "route",
+          "to": "peers"
+        },
+        "state": "external"
+      },
+      "points": [
+        [
+          0,
+          0.5
+        ],
+        [
+          0,
+          150.4000000000001
+        ],
+        [
+          0,
+          300.29999999999995
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "concept-node-6",
+        "focus": -0.05686274509803919,
+        "gap": 6.400000000000091
+      },
+      "endBinding": {
+        "elementId": "concept-node-7",
+        "focus": -0.20333333333333276,
+        "gap": 5.600000000000136
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "concept-node-0-label",
+      "type": "text",
+      "x": 57.56999999999999,
+      "y": 45,
+      "width": 224.86,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#343a40",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aM",
+      "roundness": null,
+      "seed": 1643806167,
+      "version": 1,
+      "versionNonce": 1742831281,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Start a node\none binary, one machine",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-0",
+      "originalText": "Start a node\none binary, one machine",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-1-label",
+      "type": "text",
+      "x": 73.28,
+      "y": 435,
+      "width": 193.44,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#343a40",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aN",
+      "roundness": null,
+      "seed": 1107043506,
+      "version": 1,
+      "versionNonce": 1276720486,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Join\npoint it at one peer",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-1",
+      "originalText": "Join\npoint it at one peer",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-2-label",
+      "type": "text",
+      "x": 625.7333297729492,
+      "y": 1305,
+      "width": 228.53334045410156,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aO",
+      "roundness": null,
+      "seed": 954210133,
+      "version": 4,
+      "versionNonce": 385874391,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627996,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Probe\nkeep asking: still there?",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-2",
+      "originalText": "Probe\nkeep asking: still there?",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-3-label",
+      "type": "text",
+      "x": 1009.5,
+      "y": 1695,
+      "width": 161,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aP",
+      "roundness": null,
+      "seed": 1711084168,
+      "version": 1,
+      "versionNonce": 1271772900,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Suspect\nslow is not dead",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-3",
+      "originalText": "Suspect\nslow is not dead",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-4-label",
+      "type": "text",
+      "x": 654.7,
+      "y": 445,
+      "width": 250.6,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aQ",
+      "roundness": null,
+      "seed": 1997816099,
+      "version": 1,
+      "versionNonce": 1154093501,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Gossip\ntell a few, they tell a few",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-4",
+      "originalText": "Gossip\ntell a few, they tell a few",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-5-label",
+      "type": "text",
+      "x": 553.3000030517578,
+      "y": 845,
+      "width": 173.39999389648438,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#0c8599",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aR",
+      "roundness": null,
+      "seed": 1961451214,
+      "version": 4,
+      "versionNonce": 1417048857,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627996,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "The live set\nwho is actually up",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-5",
+      "originalText": "The live set\nwho is actually up",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-6-label",
+      "type": "text",
+      "x": 207.10000000000002,
+      "y": 1305,
+      "width": 245.79999999999998,
+      "height": 50,
+      "angle": 0,
+      "strokeColor": "#2f9e44",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aS",
+      "roundness": null,
+      "seed": 1589823185,
+      "version": 1,
+      "versionNonce": 697625051,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Route\nspread work over the live",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-6",
+      "originalText": "Route\nspread work over the live",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-7-label",
+      "type": "text",
+      "x": 285.94,
+      "y": 1707.5,
+      "width": 148.12,
+      "height": 25,
+      "angle": 0,
+      "strokeColor": "#868e96",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aT",
+      "roundness": null,
+      "seed": 1757295764,
+      "version": 1,
+      "versionNonce": 567414496,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Other machines",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-7",
+      "originalText": "Other machines",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-node-8-label",
+      "type": "text",
+      "x": 227.34,
+      "y": 1087.5,
+      "width": 125.32,
+      "height": 25,
+      "angle": 0,
+      "strokeColor": "#868e96",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aU",
+      "roundness": null,
+      "seed": 241785343,
+      "version": 1,
+      "versionNonce": 2048895769,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "Client traffic",
+      "fontSize": 20,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-node-8",
+      "originalText": "Client traffic",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-0-label",
+      "type": "text",
+      "x": 144.536,
+      "y": 259.06666666666666,
+      "width": 34.928,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aV",
+      "roundness": null,
+      "seed": 315496832,
+      "version": 1,
+      "versionNonce": 912969052,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "then",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-0",
+      "originalText": "then",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-1-label",
+      "type": "text",
+      "x": 82.28,
+      "y": 1174.1,
+      "width": 59.44,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aW",
+      "roundness": null,
+      "seed": 1317970765,
+      "version": 1,
+      "versionNonce": 167139127,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "ask one",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-1",
+      "originalText": "ask one",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-2-label",
+      "type": "text",
+      "x": 457.89466666666664,
+      "y": 534.8,
+      "width": 122.71666717529297,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aX",
+      "roundness": null,
+      "seed": 298159914,
+      "version": 2,
+      "versionNonce": 46842295,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627997,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "seeds the table",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-2",
+      "originalText": "seeds the table",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-3-label",
+      "type": "text",
+      "x": 682.0506664123536,
+      "y": 1068.7133333333331,
+      "width": 101.46666717529297,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aY",
+      "roundness": null,
+      "seed": 348412975,
+      "version": 2,
+      "versionNonce": 716220151,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627996,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "pick a target",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-3",
+      "originalText": "pick a target",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-4-label",
+      "type": "text",
+      "x": 519.58,
+      "y": 1556.3999999999999,
+      "width": 111.44999694824219,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aZ",
+      "roundness": null,
+      "seed": 221310828,
+      "version": 2,
+      "versionNonce": 1468350681,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627996,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "ping / ping-req",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-4",
+      "originalText": "ping / ping-req",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-5-label",
+      "type": "text",
+      "x": 990.0173333333333,
+      "y": 1395.6,
+      "width": 77.01667022705078,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aa",
+      "roundness": null,
+      "seed": 1379154057,
+      "version": 2,
+      "versionNonce": 671850137,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627996,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "no answer",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-5",
+      "originalText": "no answer",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-6-label",
+      "type": "text",
+      "x": 1015.2160000000001,
+      "y": 1005.4679999999998,
+      "width": 133.152,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "ab",
+      "roundness": null,
+      "seed": 1659538854,
+      "version": 1,
+      "versionNonce": 727115402,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "confirm or refute",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-6",
+      "originalText": "confirm or refute",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-7-label",
+      "type": "text",
+      "x": 876.0720000000001,
+      "y": 1267.0306666666665,
+      "width": 73.424,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "ac",
+      "roundness": null,
+      "seed": 808615515,
+      "version": 1,
+      "versionNonce": 510105941,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "piggyback",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-7",
+      "originalText": "piggyback",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-8-label",
+      "type": "text",
+      "x": 668.936,
+      "y": 654.9586666666667,
+      "width": 75.19999694824219,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "ad",
+      "roundness": null,
+      "seed": 1614012088,
+      "version": 2,
+      "versionNonce": 703660023,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627997,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "converges",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-8",
+      "originalText": "converges",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-9-label",
+      "type": "text",
+      "x": 501.66666666666674,
+      "y": 1155.6,
+      "width": 133.36666870117188,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "ae",
+      "roundness": null,
+      "seed": 2077979141,
+      "version": 2,
+      "versionNonce": 1791798839,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1788465627998,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "healthy backends",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-9",
+      "originalText": "healthy backends",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "concept-edge-11-label",
+      "type": "text",
+      "x": 309.5466666666667,
+      "y": 1514,
+      "width": 60.24,
+      "height": 20,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "af",
+      "roundness": null,
+      "seed": 1030561794,
+      "version": 1,
+      "versionNonce": 1366746486,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "origin": "diagram",
+        "diagram": "concept"
+      },
+      "text": "forward",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "concept-edge-11",
+      "originalText": "forward",
+      "autoResize": true,
+      "lineHeight": 1.25
+    }
+  ],
+  "appState": {},
+  "files": {},
+  "diagramos": {
+    "version": "0.2.0-rc.5",
+    "schema": 1
+  }
+}

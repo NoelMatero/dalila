@@ -1,0 +1,20 @@
+[workspace]
+members = ["src/membership"]
+
+[package]
+name = "dalila"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.5", features = ["derive"] }
+membership = { path = "src/membership" }
+tokio = { version = "1.53.1", features = [
+  "rt-multi-thread",
+  "macros",
+  "net",
+  "time",
+  "sync",
+  "signal",
+] }
