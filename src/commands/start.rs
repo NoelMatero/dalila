@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 
-use anyhow::{Ok, Result};
-use membership::join::{self, join, start_tcp_accept_loop};
+use anyhow::Ok;
+use membership::join::{join, start_tcp_accept_loop};
 use membership::node::LocalNode;
-use tokio::net::tcp;
+use membership::state::MemberTable;
 
 pub struct Config {
     pub bind: SocketAddr,
@@ -21,22 +21,21 @@ impl From<crate::cli::StartArgs> for Config {
 
 pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     let node = LocalNode::new(cfg.bind);
+    let table = MemberTable::new();
 
+    let tmp_node = node.clone();
+    let accept_table = table.clone();
     let tcp_loop = tokio::spawn(async move {
-        start_tcp_accept_loop(cfg.bind, node.members).await.unwrap();
+        start_tcp_accept_loop(node, accept_table).await.unwrap();
     });
 
     tokio::spawn(async move {
         if !cfg.seeds.is_empty() {
-            join(cfg.seeds, node).await.unwrap();
+            join(cfg.seeds, tmp_node.clone()).await.unwrap();
         }
     });
 
     let _ = tcp_loop.await;
 
-    println!("we got this far");
-
     Ok(())
-
-    // TODO: bind and start accepting BEFORE joining, then:
 }

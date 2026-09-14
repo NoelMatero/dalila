@@ -3,10 +3,11 @@ use bytes::{Buf, BytesMut};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpSocket, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
 
 use crate::node::{LocalNode, Member};
-use crate::wire::{WireIdentity, WireMember};
+use crate::state::MemberTable;
+use crate::wire::{FromTwo, WireIdentity, WireMember};
 
 #[derive(Serialize, Deserialize, Debug)]
 enum TcpBody {
@@ -22,7 +23,7 @@ enum TcpBody {
 impl TcpBody {
     pub fn join_request(local_node: LocalNode) -> Self {
         TcpBody::JoinRequest {
-            from: WireIdentity::new(local_node),
+            from: local_node.into(),
         }
     }
 }
@@ -119,16 +120,17 @@ pub async fn join(addresses: Vec<SocketAddr>, local_node: LocalNode) -> anyhow::
 }
 
 pub async fn start_tcp_accept_loop(
-    addr: SocketAddr,
-    members: Vec<Member>,
+    node: LocalNode,
+    table: MemberTable,
 ) -> anyhow::Result<(), Box<dyn std::error::Error + 'static>> {
-    let listener = TcpListener::bind(addr).await?;
+    let listener = TcpListener::bind(node.bind).await?;
 
     loop {
         let (stream, addr) = listener.accept().await?;
 
-        let wire_members: Vec<WireMember> =
-            members.clone().into_iter().map(WireMember::from).collect();
+        let table = table.clone();
+        let tmp_node = node.clone();
+
         tokio::spawn(async move {
             let mut tcp_connection = TcpConnection::new(stream);
 
@@ -136,10 +138,12 @@ pub async fn start_tcp_accept_loop(
                 if let Some(frame) = tcp_connection.read_frame().await.unwrap() {
                     match frame {
                         TcpBody::JoinRequest { from } => {
-                            handle_join_request(from, addr, wire_members.clone()).await
+                            handle_join_request(tmp_node.clone(), from, addr, table.clone())
+                                .await
+                                .unwrap()
                         }
                         TcpBody::JoinResponse { from, members } => {
-                            handle_join_response(from, addr, members).await
+                            handle_join_response(from, addr, members, table.clone()).await;
                         }
                     }
                 }
@@ -149,24 +153,38 @@ pub async fn start_tcp_accept_loop(
 }
 
 pub async fn handle_join_request(
-    recv_wire_identity: WireIdentity,
-    recv_addr: SocketAddr,
-    mut members: Vec<WireMember>,
-) {
-    /*
+    our_node: LocalNode,
+    recvd_wire_identity: WireIdentity,
+    recvd_addr: SocketAddr,
+    table: MemberTable,
+) -> anyhow::Result<()> {
+    let mut members: Vec<WireMember> = table.snapshot().into_iter().map(Into::into).collect();
+    members.push(Member::from(our_node.clone()).into());
 
-        return all of the members:
+    let body = TcpBody::JoinResponse {
+        from: WireIdentity::from(our_node),
+        members,
+    };
 
-    */
+    let joiner = Member::from_two(recvd_wire_identity, recvd_addr);
+    let joiner_addr = joiner.addr;
+    table.insert(joiner);
+
+    let stream = TcpStream::connect(joiner_addr).await?;
+    let mut tcp_connection = TcpConnection::new(stream);
+    tcp_connection.write_frame(&body).await?;
+
+    Ok(())
 }
 
 pub async fn handle_join_response(
-    wire_identity: WireIdentity,
-    addr: SocketAddr,
-    members: Vec<WireMember>,
+    recvd_wire_identity: WireIdentity,
+    recvd_addr: SocketAddr,
+    recvd_members: Vec<WireMember>,
+    table: MemberTable,
 ) {
-    println!(
-        "todo: join response  data: {:?}, {:?}, {:?}",
-        wire_identity, addr, members
-    );
+    for member in recvd_members {
+        table.insert(member.into());
+    }
+    table.insert(Member::from_two(recvd_wire_identity, recvd_addr));
 }
