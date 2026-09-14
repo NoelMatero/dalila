@@ -1,22 +1,12 @@
-use crate::node::{Incarnation, LocalNode, Member, MemberState, NodeId};
+use crate::node::{Incarnation, Member, MemberState, NodeId};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WireIdentity {
     pub id: NodeId,
     pub port: u16,
     pub incarnation: Incarnation,
-}
-
-impl WireIdentity {
-    pub fn new(local_node: LocalNode) -> WireIdentity {
-        WireIdentity {
-            id: local_node.id,
-            port: local_node.bind.port(),
-            incarnation: local_node.incarnation,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -59,4 +49,30 @@ impl From<Member> for WireMember {
     fn from(member: Member) -> Self {
         WireMember::new(member)
     }
+}
+
+impl From<WireMemberState> for MemberState {
+    fn from(member_state: WireMemberState) -> Self {
+        match member_state {
+            WireMemberState::Dead => MemberState::Dead,
+            WireMemberState::Alive => MemberState::Alive,
+            WireMemberState::Suspect => MemberState::Suspect { since: None },
+        }
+    }
+}
+
+impl From<WireMember> for Member {
+    fn from(member: WireMember) -> Self {
+        Member {
+            id: member.id,
+            addr: member.addr,
+            incarnation: member.incarnation,
+            state: MemberState::from(member.state),
+        }
+    }
+}
+
+// Keep the trait definition here so other modules can use it
+pub trait FromTwo<A, B> {
+    fn from_two(a: A, b: B) -> Self;
 }
