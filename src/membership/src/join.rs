@@ -89,8 +89,8 @@ impl TcpConnection {
             return Ok(None);
         }
 
-        self.buffer.advance(4); // move buffer past the lenght prefix
-        let payload = self.buffer.split_to(len); // get da payload via split_to
+        self.buffer.advance(4); // move buffer past the length prefix
+        let payload = self.buffer.split_to(len); // get the payload via split_to
 
         // a peer on another version may lay the body out differently, so check
         // the version byte before decoding the rest
@@ -192,38 +192,41 @@ pub async fn start_tcp_accept_loop(listener: TcpListener, node: LocalNode, table
         tokio::spawn(async move {
             let mut tcp_connection = TcpConnection::new(stream);
 
+            // one reply per request, until the peer hangs up (Ok(None)).
             // an error ends this connection only, never the accept loop
-            if let Err(err) = handle_connection(&mut tcp_connection, &tmp_node, &table, addr).await
-            {
-                warn!(%addr, "dropped connection: {err:#}");
+            loop {
+                let frame = match tcp_connection.read_frame().await {
+                    Ok(Some(frame)) => frame,
+                    Ok(None) => break,
+                    Err(err) => {
+                        warn!(%addr, "dropped connection: {err:#}");
+                        break;
+                    }
+                };
+
+                let reply = match frame {
+                    TcpBody::JoinRequest { from } => {
+                        handle_join_request(&tmp_node, &table, from, addr)
+                    }
+                    TcpBody::MembersRequest => TcpBody::MembersResponse {
+                        from: tmp_node.identity(),
+                        members: table.snapshot().into_iter().map(Into::into).collect(),
+                    },
+                    TcpBody::JoinResponse { .. } | TcpBody::MembersResponse { .. } => {
+                        // a response arrives on the connection that sent the
+                        // request, so it never comes in through this listener
+                        warn!(%addr, "got a response where a request was expected");
+                        break;
+                    }
+                };
+
+                if let Err(err) = tcp_connection.write_frame(&reply).await {
+                    warn!(%addr, "dropped connection: {err:#}");
+                    break;
+                }
             }
         });
     }
-}
-
-async fn handle_connection(
-    tcp_connection: &mut TcpConnection,
-    node: &LocalNode,
-    table: &MemberTable,
-    addr: SocketAddr,
-) -> anyhow::Result<()> {
-    // one reply per request, until the peer hangs up (Ok(None))
-    while let Some(frame) = tcp_connection.read_frame().await? {
-        let reply = match frame {
-            TcpBody::JoinRequest { from } => handle_join_request(node, table, from, addr),
-            TcpBody::MembersRequest => TcpBody::MembersResponse {
-                from: node.identity(),
-                members: table.snapshot().into_iter().map(Into::into).collect(),
-            },
-            TcpBody::JoinResponse { .. } | TcpBody::MembersResponse { .. } => {
-                bail!("got a response where a request was expected")
-            }
-        };
-
-        tcp_connection.write_frame(&reply).await?;
-    }
-
-    Ok(())
 }
 
 pub fn handle_join_request(
