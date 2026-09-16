@@ -1,9 +1,11 @@
-use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::net::SocketAddr;
+
+use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 use uuid::Uuid;
 
-use crate::wire::{FromTwo, WireIdentity};
+use crate::wire::WireIdentity;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NodeId(Uuid);
@@ -11,6 +13,12 @@ pub struct NodeId(Uuid);
 impl NodeId {
     pub fn random() -> Self {
         Self(Uuid::new_v4())
+    }
+}
+
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -25,10 +33,19 @@ impl Incarnation {
     }
 }
 
+impl fmt::Display for Incarnation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemberState {
     Alive,
-    Suspect { since: Option<Instant> },
+    /// `since` reads this machine's clock, taken when this node learned of the
+    /// suspicion. Every node runs its own timer on the same rumor, which is
+    /// why it never crosses the wire.
+    Suspect { since: Instant },
     Dead,
 }
 
@@ -49,12 +66,13 @@ impl Member {
             state: MemberState::Alive,
         }
     }
-
 }
 
 #[derive(Debug, Clone)]
 pub struct LocalNode {
     pub id: NodeId,
+    /// The address actually bound. If port 0 was asked for, this holds the
+    /// port the OS picked.
     pub bind: SocketAddr,
     pub incarnation: Incarnation,
 }
@@ -68,42 +86,18 @@ impl LocalNode {
         }
     }
 
+    /// How this node introduces itself to a peer. The port is included and
+    /// the IP is not: the peer sees our IP on the connection, and `bind` may
+    /// be 0.0.0.0, which nobody can connect to.
+    pub fn identity(&self) -> WireIdentity {
+        WireIdentity {
+            id: self.id,
+            port: self.bind.port(),
+            incarnation: self.incarnation,
+        }
+    }
+
     pub fn refute(&mut self, rumored: Incarnation) {
         self.incarnation = Incarnation::superseding(rumored.max(self.incarnation));
-    }
-}
-
-impl From<LocalNode> for Member {
-    fn from(local_node: LocalNode) -> Member {
-        Member {
-            id: local_node.id,
-            addr: local_node.bind,
-            incarnation: local_node.incarnation,
-            state: MemberState::Alive,
-        }
-    }
-}
-
-// Converters moved here from wire.rs to break the loop:
-/// A peer that just announced itself: the IP is observed from the connection,
-/// the port is what it told us it listens on.
-impl FromTwo<WireIdentity, SocketAddr> for Member {
-    fn from_two(identity: WireIdentity, addr: SocketAddr) -> Self {
-        Member {
-            id: identity.id,
-            addr: SocketAddr::new(addr.ip(), identity.port),
-            incarnation: identity.incarnation,
-            state: MemberState::Alive,
-        }
-    }
-}
-
-impl From<LocalNode> for WireIdentity {
-    fn from(node: LocalNode) -> Self {
-        WireIdentity {
-            id: node.id,
-            port: node.bind.port(),
-            incarnation: node.incarnation,
-        }
     }
 }
