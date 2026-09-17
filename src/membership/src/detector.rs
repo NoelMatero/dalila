@@ -1,25 +1,105 @@
-use crate::state::MemberTable;
+use std::sync::Arc;
+use std::time::Duration;
 
-pub async fn start_udp_detector(table: MemberTable) -> anyhow::Result<()> {
-    // TODO: this needs a tokio::time::interval — a bare `loop` here spins a core.
-    // One probe per protocol period: walk `table.shuffled_ids()`, and ask for a
-    // fresh shuffle when the pass runs out.
-    let _order = table.shuffled_ids();
+use tokio::net::UdpSocket;
+use tokio::time::{self, MissedTickBehavior};
+use tracing::{debug, warn};
 
-    todo!()
+use crate::node::{LocalNode, Member, MemberState, NodeId};
+use crate::state::{MemberTable, MergeOutcome};
+use crate::udp::{self, PendingAcks};
+use crate::wire::{WireMember, WireMemberState};
 
-    /*
-            start pinging nodes randomly with eihter connect or bind,
-            update incarnation, suspicion and the member list etc.
-            so we first sort the list of memebr ndoes and then ping them one by one
-            once we come to the end of the list, we re-sort the list
+/// One protocol period: one probe per period.
+pub const PROBE_INTERVAL: Duration = Duration::from_secs(1);
 
-            1. get the list, by this time we've joined everything we wanted to in the cli args.
-            2. start an async loop
-            3. get a node from the rng list
-            4. ping that node
-            5. go to the next node and repeat
-            6. ...
-            7. once we're done with that last, we just reshuffle the list and restart
-    */
+/// How long a member stays suspect before it is declared dead.
+pub const SUSPICION_TIMEOUT: Duration = Duration::from_secs(5);
+
+pub async fn start_udp_detector(
+    socket: Arc<UdpSocket>,
+    node: LocalNode,
+    table: MemberTable,
+    pending: PendingAcks,
+) {
+    // 1. the list: filled lazily from the table, so members that join later are
+    //    picked up on the next reshuffle
+    let mut order: Vec<NodeId> = Vec::new();
+    let mut seq: u32 = 0;
+
+    // 2. the loop, one tick per protocol period. a slow tick pushes the next one
+    //    back instead of firing a burst to catch up
+    let mut ticker = time::interval(PROBE_INTERVAL);
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
+
+    loop {
+        ticker.tick().await;
+
+        // 3. a node from the shuffled list (5./7. next node, reshuffle at the end)
+        if let Some(target) = next_target(&table, &mut order) {
+            // 4. ping that node
+            seq = seq.wrapping_add(1);
+            let acked = udp::ping(&socket, &node, &pending, target.id, target.addr, seq).await;
+            handle_result(&table, &node, &target, acked);
+        }
+
+        // 6. suspects nobody cleared in time are declared dead
+        sweep_suspects(&table, &node);
+    }
+}
+
+/// The next member to probe, skipping ones that are dead or no longer in the
+/// table. Refills `order` with a fresh shuffle when it runs out.
+fn next_target(table: &MemberTable, order: &mut Vec<NodeId>) -> Option<Member> {
+    // at most two passes: what's left of this shuffle, then one fresh shuffle.
+    // if both come up empty there is nobody to probe
+    for _ in 0..2 {
+        while let Some(id) = order.pop() {
+            match table.get(&id) {
+                Some(member) if member.state != MemberState::Dead => return Some(member),
+                _ => continue,
+            }
+        }
+        *order = table.shuffled_ids();
+    }
+    None
+}
+
+fn handle_result(table: &MemberTable, node: &LocalNode, target: &Member, acked: bool) {
+    if acked {
+        // an ack at the same incarnation can't clear a suspicion; only the
+        // suspect publishing a newer incarnation can, and that needs gossip
+        return;
+    }
+
+    debug!(id = %target.id, addr = %target.addr, "probe got no ack");
+    // same incarnation as our entry, so this outranks Alive and is ignored if
+    // the member is already suspect, which keeps its original clock
+    if mark(table, node, target, WireMemberState::Suspect) {
+        warn!(id = %target.id, addr = %target.addr, "member suspected");
+    }
+}
+
+fn sweep_suspects(table: &MemberTable, node: &LocalNode) {
+    let expired = table.members_where(|m| {
+        matches!(m.state, MemberState::Suspect { since } if since.elapsed() >= SUSPICION_TIMEOUT)
+    });
+
+    for member in expired {
+        if mark(table, node, &member, WireMemberState::Dead) {
+            warn!(id = %member.id, addr = %member.addr, "member declared dead");
+        }
+    }
+}
+
+/// Merge a new state for `member` at the incarnation we already have for it.
+/// True if the table changed.
+fn mark(table: &MemberTable, node: &LocalNode, member: &Member, state: WireMemberState) -> bool {
+    let rumor = WireMember {
+        id: member.id,
+        addr: member.addr,
+        incarnation: member.incarnation,
+        state,
+    };
+    table.merge(rumor, node.id) == MergeOutcome::Updated
 }

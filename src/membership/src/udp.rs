@@ -1,31 +1,44 @@
+use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
+use tokio::sync::oneshot;
+use tokio::time::timeout;
+use tracing::{debug, warn};
 
 use crate::{
-    node::{LocalNode, Member},
-    state::MemberTable,
-    wire::{WireIdentity, WireMember},
+    node::{LocalNode, NodeId},
+    wire::WireIdentity,
 };
+
+/// How long a probe waits for its ack before the target counts as unreachable.
+pub const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
+
+/// A datagram is a whole message, so unlike TCP there is no length prefix.
+/// Kept well under a typical MTU so a message is never split into IP fragments.
+const MAX_DATAGRAM_LEN: usize = 1400;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum UdpBody {
     Ping {
+        /// Echoed back in the ack, so the prober can tell which ping it answers.
+        seq: u32,
         from: WireIdentity,
-        their_members: Vec<WireMember>,
     },
 
     Ack {
+        seq: u32,
         from: WireIdentity,
-        new_members: Option<WireMember>,
     },
 }
 
 impl UdpBody {
-    fn encode_frame(self) -> anyhow::Result<Vec<u8>> {
-        let payload = postcard::to_allocvec(&self)?;
+    fn encode_frame(&self) -> anyhow::Result<Vec<u8>> {
+        let payload = postcard::to_allocvec(self)?;
         Ok(payload)
     }
 }
@@ -35,77 +48,126 @@ fn decode_frame(payload: &[u8]) -> Result<UdpBody> {
     Ok(frame)
 }
 
-pub trait IntoTokioSocket {
-    async fn into_socket(self) -> Result<UdpSocket>;
-}
+/// Probes waiting for an ack, by sequence number.
+///
+/// The detector registers a ping here before sending it, and the receive loop
+/// completes it when the matching ack arrives. That is how two separate tasks
+/// sharing one socket hand an answer to the one that asked.
+#[derive(Clone, Default)]
+pub struct PendingAcks(Arc<Mutex<HashMap<u32, (NodeId, oneshot::Sender<()>)>>>);
 
-impl IntoTokioSocket for SocketAddr {
-    async fn into_socket(self) -> Result<UdpSocket> {
-        UdpSocket::bind(self)
-            .await
-            .with_context(|| format!("Failed to bind UDP socket to address: {}", self))
+impl PendingAcks {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn register(&self, seq: u32, target: NodeId) -> oneshot::Receiver<()> {
+        let (tx, rx) = oneshot::channel();
+        self.0.lock().unwrap().insert(seq, (target, tx));
+        rx
+    }
+
+    /// Drop a probe that gave up. Does nothing if the ack already resolved it.
+    fn forget(&self, seq: u32) {
+        self.0.lock().unwrap().remove(&seq);
+    }
+
+    fn resolve(&self, seq: u32, from: NodeId) {
+        let mut pending = self.0.lock().unwrap();
+
+        // Only the node we pinged may answer. A different process now living
+        // at the same address (a restart gets a new id) must not keep the old
+        // member looking alive.
+        if pending.get(&seq).is_some_and(|(target, _)| *target == from) {
+            let (_, tx) = pending.remove(&seq).unwrap();
+            // Err only means the prober already timed out and stopped waiting.
+            let _ = tx.send(());
+        }
     }
 }
 
-impl IntoTokioSocket for UdpSocket {
-    async fn into_socket(self) -> anyhow::Result<UdpSocket> {
-        Ok(self)
+/// Ping `target` and wait for its ack. False on timeout or if the send failed.
+pub async fn ping(
+    socket: &UdpSocket,
+    node: &LocalNode,
+    pending: &PendingAcks,
+    target: NodeId,
+    addr: SocketAddr,
+    seq: u32,
+) -> bool {
+    // registered before sending, or a fast ack could arrive before anyone is waiting for it
+    let ack = pending.register(seq, target);
+
+    let body = UdpBody::Ping {
+        seq,
+        from: node.identity(),
+    };
+    if let Err(err) = send_udp(socket, addr, &body).await {
+        warn!(%addr, "could not send ping: {err:#}");
+        pending.forget(seq);
+        return false;
     }
+
+    let acked = matches!(timeout(PROBE_TIMEOUT, ack).await, Ok(Ok(())));
+    pending.forget(seq);
+    acked
 }
 
 async fn handle_ping_req(
     socket: &UdpSocket,
-    from: WireIdentity,
-    their_members: Vec<WireMember>,
-    table: MemberTable,
-) -> anyhow::Result<()> {
-    let _their_members: Vec<Member> = their_members.into_iter().map(Into::into).collect();
-    let _ours = table.snapshot();
-    // compare these guys, perhaps report the result, then update if needed
-
-    todo!()
-
-    // send them an ack back and then new members, if such exist
-    // incarnation?
+    node: &LocalNode,
+    seq: u32,
+    addr: SocketAddr,
+) -> Result<()> {
+    // reply to the address the ping came from: that's where the prober's socket is
+    let ack = UdpBody::Ack {
+        seq,
+        from: node.identity(),
+    };
+    send_udp(socket, addr, &ack).await
 }
 
-async fn handle_ack_req(socket: &UdpSocket, from: WireIdentity, their_members: Vec<WireMember>) {
-    // resolve the suspect thing we added after pinging
+fn handle_ack_req(pending: &PendingAcks, seq: u32, from: WireIdentity) {
+    pending.resolve(seq, from.id);
 }
 
-async fn send_udp<T: IntoTokioSocket>(target: T, body: UdpBody) -> Result<()> {
-    let socket = target.into_socket().await?;
-
-    match body {
-        UdpBody::Ping {
-            from,
-            their_members,
-        } => {}
-        UdpBody::Ack { from, new_members } => {}
-    }
-
-    todo!()
+async fn send_udp(socket: &UdpSocket, target: SocketAddr, body: &UdpBody) -> Result<()> {
+    let payload = body.encode_frame()?;
+    socket.send_to(&payload, target).await?;
+    Ok(())
 }
 
-pub async fn start_udp_loop(node: LocalNode, table: MemberTable) -> anyhow::Result<()> {
-    let socket = UdpSocket::bind(node.bind).await?;
-
-    let mut buf = [0u8; 4096];
+// receiving pings and acks
+pub async fn start_udp_loop(socket: Arc<UdpSocket>, node: LocalNode, pending: PendingAcks) {
+    let mut buf = [0u8; MAX_DATAGRAM_LEN];
 
     loop {
-        let (len, addr) = socket.recv_from(&mut buf).await?;
+        let (len, addr) = match socket.recv_from(&mut buf).await {
+            Ok(received) => received,
+            Err(err) => {
+                // some platforms report an earlier send's "port unreachable" here.
+                // it's about one peer, not about this socket, so keep going
+                debug!("udp receive failed: {err}");
+                continue;
+            }
+        };
 
-        let frame = decode_frame(&buf)?;
+        // only the bytes that arrived, not the whole buffer
+        let frame = match decode_frame(&buf[..len]) {
+            Ok(frame) => frame,
+            Err(err) => {
+                warn!(%addr, "ignoring malformed datagram: {err:#}");
+                continue;
+            }
+        };
 
         match frame {
-            UdpBody::Ping {
-                from,
-                their_members,
-            } => {
-                handle_ping_req(&socket, from, their_members, table.clone()).await?;
+            UdpBody::Ping { seq, from: _ } => {
+                if let Err(err) = handle_ping_req(&socket, &node, seq, addr).await {
+                    warn!(%addr, "could not send ack: {err:#}");
+                }
             }
-            UdpBody::Ack { from, new_members } => {}
+            UdpBody::Ack { seq, from } => handle_ack_req(&pending, seq, from),
         }
     }
-    todo!()
 }
