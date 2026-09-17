@@ -5,6 +5,7 @@ use tokio::net::UdpSocket;
 use tokio::time::{self, MissedTickBehavior};
 use tracing::{debug, warn};
 
+use crate::dissemination::{self, GossipQueue};
 use crate::node::{LocalNode, Member, MemberState, NodeId};
 use crate::state::{MemberTable, MergeOutcome};
 use crate::udp::{self, PendingAcks};
@@ -20,6 +21,7 @@ pub async fn start_udp_detector(
     socket: Arc<UdpSocket>,
     node: LocalNode,
     table: MemberTable,
+    queue: GossipQueue,
     pending: PendingAcks,
 ) {
     // 1. the list: filled lazily from the table, so members that join later are
@@ -39,12 +41,12 @@ pub async fn start_udp_detector(
         if let Some(target) = next_target(&table, &mut order) {
             // 4. ping that node
             seq = seq.wrapping_add(1);
-            let acked = udp::ping(&socket, &node, &pending, target.id, target.addr, seq).await;
-            handle_result(&table, &node, &target, acked);
+            let acked = udp::ping(&socket, &node, &queue, &pending, target.id, target.addr, seq).await;
+            handle_result(&node, &table, &queue, &target, acked);
         }
 
         // 6. suspects nobody cleared in time are declared dead
-        sweep_suspects(&table, &node);
+        sweep_suspects(&node, &table, &queue);
     }
 }
 
@@ -65,41 +67,53 @@ fn next_target(table: &MemberTable, order: &mut Vec<NodeId>) -> Option<Member> {
     None
 }
 
-fn handle_result(table: &MemberTable, node: &LocalNode, target: &Member, acked: bool) {
+fn handle_result(
+    node: &LocalNode,
+    table: &MemberTable,
+    queue: &GossipQueue,
+    target: &Member,
+    acked: bool,
+) {
     if acked {
-        // an ack at the same incarnation can't clear a suspicion; only the
-        // suspect publishing a newer incarnation can, and that needs gossip
+        // an ack at the same incarnation can't clear a suspicion. the suspect
+        // clears itself: it hears the rumor by gossip and refutes it
         return;
     }
 
     debug!(id = %target.id, addr = %target.addr, "probe got no ack");
     // same incarnation as our entry, so this outranks Alive and is ignored if
     // the member is already suspect, which keeps its original clock
-    if mark(table, node, target, WireMemberState::Suspect) {
+    if mark(node, table, queue, target, WireMemberState::Suspect) {
         warn!(id = %target.id, addr = %target.addr, "member suspected");
     }
 }
 
-fn sweep_suspects(table: &MemberTable, node: &LocalNode) {
+fn sweep_suspects(node: &LocalNode, table: &MemberTable, queue: &GossipQueue) {
     let expired = table.members_where(|m| {
         matches!(m.state, MemberState::Suspect { since } if since.elapsed() >= SUSPICION_TIMEOUT)
     });
 
     for member in expired {
-        if mark(table, node, &member, WireMemberState::Dead) {
+        if mark(node, table, queue, &member, WireMemberState::Dead) {
             warn!(id = %member.id, addr = %member.addr, "member declared dead");
         }
     }
 }
 
 /// Merge a new state for `member` at the incarnation we already have for it.
-/// True if the table changed.
-fn mark(table: &MemberTable, node: &LocalNode, member: &Member, state: WireMemberState) -> bool {
+/// True if the table changed, in which case the rumor is also queued.
+fn mark(
+    node: &LocalNode,
+    table: &MemberTable,
+    queue: &GossipQueue,
+    member: &Member,
+    state: WireMemberState,
+) -> bool {
     let rumor = WireMember {
         id: member.id,
         addr: member.addr,
         incarnation: member.incarnation,
         state,
     };
-    table.merge(rumor, node.id) == MergeOutcome::Updated
+    dissemination::apply(node, table, queue, rumor) == MergeOutcome::Updated
 }

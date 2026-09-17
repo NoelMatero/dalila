@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use membership::detector::start_udp_detector;
+use membership::dissemination::GossipQueue;
 use membership::join::{join, start_tcp_accept_loop};
 use membership::node::LocalNode;
 use membership::state::MemberTable;
@@ -45,26 +46,30 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
 
     let node = LocalNode::new(bound);
     let table = MemberTable::new();
+    let queue = GossipQueue::new();
     let pending = PendingAcks::new();
 
     let accept_loop = tokio::spawn(start_tcp_accept_loop(
         listener,
         node.clone(),
         table.clone(),
+        queue.clone(),
     ));
     let udp_loop = tokio::spawn(start_udp_loop(
         socket.clone(),
         node.clone(),
+        table.clone(),
+        queue.clone(),
         pending.clone(),
     ));
     info!(id = %node.id, addr = %node.bind, "listening");
 
     if !cfg.seeds.is_empty() {
-        join(cfg.seeds, &node, &table).await?;
+        join(cfg.seeds, &node, &table, &queue).await?;
     }
 
     // probing starts after the join, so the first shuffle already has the cluster in it
-    let detector = tokio::spawn(start_udp_detector(socket, node, table, pending));
+    let detector = tokio::spawn(start_udp_detector(socket, node, table, queue, pending));
 
     tokio::signal::ctrl_c()
         .await

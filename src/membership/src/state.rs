@@ -50,12 +50,23 @@ impl MemberTable {
         let mut members = self.0.lock().unwrap();
         match members.entry(rumor.id) {
             Entry::Vacant(slot) => {
+                // a node's rumor about itself carries its bind address, which
+                // can be 0.0.0.0. nobody can reach that, so don't record it
+                if rumor.addr.ip().is_unspecified() {
+                    return MergeOutcome::Ignored;
+                }
                 slot.insert(rumor.into());
                 MergeOutcome::Added
             }
             Entry::Occupied(mut slot) => {
                 if supersedes(&rumor, slot.get()) {
-                    slot.insert(rumor.into());
+                    // only incarnation and state change. the address stays as
+                    // first learned: a process never moves (a restart gets a
+                    // new id), and a rumor may carry an address that is worse
+                    // than ours, like the 0.0.0.0 above
+                    let member = slot.get_mut();
+                    member.incarnation = rumor.incarnation;
+                    member.state = rumor.state.into();
                     MergeOutcome::Updated
                 } else {
                     MergeOutcome::Ignored
