@@ -146,9 +146,13 @@ fn handle_gossip(node: &LocalNode, table: &MemberTable, queue: &GossipQueue, gos
         let (id, addr, state, incarnation) = (rumor.id, rumor.addr, rumor.state, rumor.incarnation);
 
         match dissemination::apply(node, table, queue, rumor) {
-            MergeOutcome::Added => info!(%id, %addr, "new member (gossip)"),
+            MergeOutcome::Added => {
+                let effective_addr = table.get(&id).map(|m| m.addr).unwrap_or(addr);
+                info!(%id, addr = %effective_addr, "new member (gossip)");
+            }
             MergeOutcome::Updated => {
-                info!(%id, %addr, ?state, %incarnation, "member updated (gossip)")
+                let effective_addr = table.get(&id).map(|m| m.addr).unwrap_or(addr);
+                info!(%id, addr = %effective_addr, ?state, %incarnation, "member updated (gossip)");
             }
             // refutations are logged inside apply
             MergeOutcome::Ignored | MergeOutcome::Refute { .. } => {}
