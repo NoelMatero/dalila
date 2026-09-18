@@ -7,6 +7,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;
 use tracing::{info, warn};
 
+use crate::dissemination::{self, GossipQueue};
 use crate::node::LocalNode;
 use crate::state::{MemberTable, MergeOutcome};
 use crate::wire::{PROTOCOL_VERSION, TcpBody, WireIdentity, WireMember};
@@ -111,13 +112,14 @@ pub async fn join(
     addresses: Vec<SocketAddr>,
     local_node: &LocalNode,
     table: &MemberTable,
+    queue: &GossipQueue,
 ) -> anyhow::Result<()> {
     let body = TcpBody::JoinRequest {
         from: local_node.identity(),
     };
 
     for seed in &addresses {
-        match join_through(*seed, &body, local_node, table).await {
+        match join_through(*seed, &body, local_node, table, queue).await {
             Ok(()) => {
                 info!(%seed, members = table.len(), "joined cluster");
                 return Ok(());
@@ -135,6 +137,7 @@ async fn join_through(
     body: &TcpBody,
     local_node: &LocalNode,
     table: &MemberTable,
+    queue: &GossipQueue,
 ) -> anyhow::Result<()> {
     let mut tcp_connection = TcpConnection::connect(seed).await?;
     tcp_connection.write_frame(body).await?;
@@ -146,7 +149,7 @@ async fn join_through(
 
     match reply {
         Some(TcpBody::JoinResponse { from, members }) => {
-            handle_join_response(local_node, table, from, seed, members);
+            handle_join_response(local_node, table, queue, from, seed, members);
             Ok(())
         }
         Some(_) => bail!("seed replied with something other than a join response"),
@@ -172,7 +175,12 @@ pub async fn fetch_members(
     }
 }
 
-pub async fn start_tcp_accept_loop(listener: TcpListener, node: LocalNode, table: MemberTable) {
+pub async fn start_tcp_accept_loop(
+    listener: TcpListener,
+    node: LocalNode,
+    table: MemberTable,
+    queue: GossipQueue,
+) {
     loop {
         let (stream, addr) = match listener.accept().await {
             Ok(accepted) => accepted,
@@ -187,6 +195,7 @@ pub async fn start_tcp_accept_loop(listener: TcpListener, node: LocalNode, table
         };
 
         let table = table.clone();
+        let queue = queue.clone();
         let tmp_node = node.clone();
 
         tokio::spawn(async move {
@@ -206,7 +215,7 @@ pub async fn start_tcp_accept_loop(listener: TcpListener, node: LocalNode, table
 
                 let reply = match frame {
                     TcpBody::JoinRequest { from } => {
-                        handle_join_request(&tmp_node, &table, from, addr)
+                        handle_join_request(&tmp_node, &table, &queue, from, addr)
                     }
                     TcpBody::MembersRequest => TcpBody::MembersResponse {
                         from: tmp_node.identity(),
@@ -232,13 +241,15 @@ pub async fn start_tcp_accept_loop(listener: TcpListener, node: LocalNode, table
 pub fn handle_join_request(
     our_node: &LocalNode,
     table: &MemberTable,
+    queue: &GossipQueue,
     recvd_wire_identity: WireIdentity,
     recvd_addr: SocketAddr,
 ) -> TcpBody {
     // snapshot before adding the joiner, so it isn't told about itself
     let members = table.snapshot().into_iter().map(Into::into).collect();
 
-    apply(table, our_node, recvd_wire_identity.observed_at(recvd_addr));
+    // Added, so it's also queued: the rest of the cluster hears about the joiner by gossip
+    apply(our_node, table, queue, recvd_wire_identity.observed_at(recvd_addr));
 
     TcpBody::JoinResponse {
         from: our_node.identity(),
@@ -249,31 +260,25 @@ pub fn handle_join_request(
 pub fn handle_join_response(
     our_node: &LocalNode,
     table: &MemberTable,
+    queue: &GossipQueue,
     recvd_wire_identity: WireIdentity,
     recvd_addr: SocketAddr,
     recvd_members: Vec<WireMember>,
 ) {
     // the seed has no entry for itself in its own table, so build its record
     // the same way it built ours: ip from the connection, port from the identity
-    apply(table, our_node, recvd_wire_identity.observed_at(recvd_addr));
+    apply(our_node, table, queue, recvd_wire_identity.observed_at(recvd_addr));
 
     for member in recvd_members {
-        apply(table, our_node, member);
+        apply(our_node, table, queue, member);
     }
 }
 
-// merge one rumor into the table and log what happened
-fn apply(table: &MemberTable, our_node: &LocalNode, rumor: WireMember) {
+// merge one rumor into the table (and queue it if it changed anything)
+fn apply(our_node: &LocalNode, table: &MemberTable, queue: &GossipQueue, rumor: WireMember) {
     let (id, addr) = (rumor.id, rumor.addr);
 
-    match table.merge(rumor, our_node.id) {
-        MergeOutcome::Added => info!(%id, %addr, "new member"),
-        MergeOutcome::Updated | MergeOutcome::Ignored => {}
-        MergeOutcome::Refute { rumored } => {
-            // can't happen through join: every process starts with a fresh id, so
-            // nobody has had time to suspect it yet. becomes reachable once
-            // rumors spread by gossip, which is where the incarnation bump belongs
-            warn!(%rumored, "a peer believes this node is not alive; refutation not implemented yet");
-        }
+    if dissemination::apply(our_node, table, queue, rumor) == MergeOutcome::Added {
+        info!(%id, %addr, "new member");
     }
 }

@@ -8,11 +8,13 @@ use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
 use tokio::sync::oneshot;
 use tokio::time::timeout;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::{
+    dissemination::{self, GossipQueue},
     node::{LocalNode, NodeId},
-    wire::WireIdentity,
+    state::{MemberTable, MergeOutcome},
+    wire::{WireIdentity, WireMember},
 };
 
 /// How long a probe waits for its ack before the target counts as unreachable.
@@ -28,11 +30,14 @@ enum UdpBody {
         /// Echoed back in the ack, so the prober can tell which ping it answers.
         seq: u32,
         from: WireIdentity,
+        /// Rumors riding along. There is no separate gossip message.
+        gossip: Vec<WireMember>,
     },
 
     Ack {
         seq: u32,
         from: WireIdentity,
+        gossip: Vec<WireMember>,
     },
 }
 
@@ -90,6 +95,7 @@ impl PendingAcks {
 pub async fn ping(
     socket: &UdpSocket,
     node: &LocalNode,
+    queue: &GossipQueue,
     pending: &PendingAcks,
     target: NodeId,
     addr: SocketAddr,
@@ -101,6 +107,7 @@ pub async fn ping(
     let body = UdpBody::Ping {
         seq,
         from: node.identity(),
+        gossip: queue.take(),
     };
     if let Err(err) = send_udp(socket, addr, &body).await {
         warn!(%addr, "could not send ping: {err:#}");
@@ -116,6 +123,7 @@ pub async fn ping(
 async fn handle_ping_req(
     socket: &UdpSocket,
     node: &LocalNode,
+    queue: &GossipQueue,
     seq: u32,
     addr: SocketAddr,
 ) -> Result<()> {
@@ -123,12 +131,33 @@ async fn handle_ping_req(
     let ack = UdpBody::Ack {
         seq,
         from: node.identity(),
+        gossip: queue.take(),
     };
     send_udp(socket, addr, &ack).await
 }
 
 fn handle_ack_req(pending: &PendingAcks, seq: u32, from: WireIdentity) {
     pending.resolve(seq, from.id);
+}
+
+// apply every rumor a packet carried, before handling the packet itself
+fn handle_gossip(node: &LocalNode, table: &MemberTable, queue: &GossipQueue, gossip: Vec<WireMember>) {
+    for rumor in gossip {
+        let (id, addr, state, incarnation) = (rumor.id, rumor.addr, rumor.state, rumor.incarnation);
+
+        match dissemination::apply(node, table, queue, rumor) {
+            MergeOutcome::Added => {
+                let effective_addr = table.get(&id).map(|m| m.addr).unwrap_or(addr);
+                info!(%id, addr = %effective_addr, "new member (gossip)");
+            }
+            MergeOutcome::Updated => {
+                let effective_addr = table.get(&id).map(|m| m.addr).unwrap_or(addr);
+                info!(%id, addr = %effective_addr, ?state, %incarnation, "member updated (gossip)");
+            }
+            // refutations are logged inside apply
+            MergeOutcome::Ignored | MergeOutcome::Refute { .. } => {}
+        }
+    }
 }
 
 async fn send_udp(socket: &UdpSocket, target: SocketAddr, body: &UdpBody) -> Result<()> {
@@ -138,7 +167,13 @@ async fn send_udp(socket: &UdpSocket, target: SocketAddr, body: &UdpBody) -> Res
 }
 
 // receiving pings and acks
-pub async fn start_udp_loop(socket: Arc<UdpSocket>, node: LocalNode, pending: PendingAcks) {
+pub async fn start_udp_loop(
+    socket: Arc<UdpSocket>,
+    node: LocalNode,
+    table: MemberTable,
+    queue: GossipQueue,
+    pending: PendingAcks,
+) {
     let mut buf = [0u8; MAX_DATAGRAM_LEN];
 
     loop {
@@ -161,13 +196,23 @@ pub async fn start_udp_loop(socket: Arc<UdpSocket>, node: LocalNode, pending: Pe
             }
         };
 
+        // gossip first: a rumor about us in this ping gets refuted, and the
+        // refutation can then ride out on the ack we're about to send
         match frame {
-            UdpBody::Ping { seq, from: _ } => {
-                if let Err(err) = handle_ping_req(&socket, &node, seq, addr).await {
+            UdpBody::Ping {
+                seq,
+                from: _,
+                gossip,
+            } => {
+                handle_gossip(&node, &table, &queue, gossip);
+                if let Err(err) = handle_ping_req(&socket, &node, &queue, seq, addr).await {
                     warn!(%addr, "could not send ack: {err:#}");
                 }
             }
-            UdpBody::Ack { seq, from } => handle_ack_req(&pending, seq, from),
+            UdpBody::Ack { seq, from, gossip } => {
+                handle_gossip(&node, &table, &queue, gossip);
+                handle_ack_req(&pending, seq, from);
+            }
         }
     }
 }
