@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use rand::seq::SliceRandom;
 
-use crate::node::{Incarnation, Member, NodeId};
+use crate::node::{Incarnation, Member, MemberState, NodeId};
 use crate::wire::{WireMember, WireMemberState};
 
 /// This node's belief about every peer it has heard of. Clones share the
@@ -106,6 +106,26 @@ impl MemberTable {
         let mut ids = self.ids();
         ids.shuffle(&mut rand::rng());
         ids
+    }
+
+    /// Up to `count` members to relay a probe on our behalf, picked at random.
+    ///
+    /// `exclude` is the node being probed. A suspect is still worth asking:
+    /// all we know about it is that it did not answer *us*, which is the same
+    /// thing we are trying to find out about the target.
+    pub fn relay_candidates(&self, exclude: &NodeId, count: usize) -> Vec<Member> {
+        let mut candidates: Vec<Member> = self
+            .0
+            .lock()
+            .unwrap()
+            .values()
+            .filter(|member| member.id != *exclude && member.state != MemberState::Dead)
+            .cloned()
+            .collect();
+
+        candidates.shuffle(&mut rand::rng());
+        candidates.truncate(count);
+        candidates
     }
 
     pub fn members_where(&self, f: impl Fn(&Member) -> bool) -> Vec<Member> {

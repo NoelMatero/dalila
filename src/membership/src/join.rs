@@ -97,7 +97,9 @@ impl TcpConnection {
         // the version byte before decoding the rest
         match payload.first() {
             Some(&PROTOCOL_VERSION) => {}
-            Some(other) => bail!("peer speaks protocol version {other}, we speak {PROTOCOL_VERSION}"),
+            Some(other) => {
+                bail!("peer speaks protocol version {other}, we speak {PROTOCOL_VERSION}")
+            }
             None => bail!("received an empty frame"),
         }
 
@@ -158,9 +160,7 @@ async fn join_through(
 }
 
 // ask a running node for its member table
-pub async fn fetch_members(
-    addr: SocketAddr,
-) -> anyhow::Result<(WireIdentity, Vec<WireMember>)> {
+pub async fn fetch_members(addr: SocketAddr) -> anyhow::Result<(WireIdentity, Vec<WireMember>)> {
     let mut tcp_connection = TcpConnection::connect(addr).await?;
     tcp_connection.write_frame(&TcpBody::MembersRequest).await?;
 
@@ -249,7 +249,12 @@ pub fn handle_join_request(
     let members = table.snapshot().into_iter().map(Into::into).collect();
 
     // Added, so it's also queued: the rest of the cluster hears about the joiner by gossip
-    apply(our_node, table, queue, recvd_wire_identity.observed_at(recvd_addr));
+    apply(
+        our_node,
+        table,
+        queue,
+        recvd_wire_identity.observed_at(recvd_addr),
+    );
 
     TcpBody::JoinResponse {
         from: our_node.identity(),
@@ -267,7 +272,12 @@ pub fn handle_join_response(
 ) {
     // the seed has no entry for itself in its own table, so build its record
     // the same way it built ours: ip from the connection, port from the identity
-    apply(our_node, table, queue, recvd_wire_identity.observed_at(recvd_addr));
+    apply(
+        our_node,
+        table,
+        queue,
+        recvd_wire_identity.observed_at(recvd_addr),
+    );
 
     for member in recvd_members {
         apply(our_node, table, queue, member);

@@ -46,7 +46,9 @@ pub enum MemberState {
     /// `since` reads this machine's clock, taken when this node learned of the
     /// suspicion. Every node runs its own timer on the same rumor, which is
     /// why it never crosses the wire.
-    Suspect { since: Instant },
+    Suspect {
+        since: Instant,
+    },
     Dead,
 }
 
