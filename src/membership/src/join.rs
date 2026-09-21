@@ -10,6 +10,7 @@ use tracing::{info, warn};
 use crate::dissemination::{self, GossipQueue};
 use crate::node::LocalNode;
 use crate::state::{MemberTable, MergeOutcome};
+use crate::sync;
 use crate::wire::{PROTOCOL_VERSION, TcpBody, WireIdentity, WireMember};
 
 /// Largest payload we accept. Checked against the length prefix before we
@@ -17,7 +18,7 @@ use crate::wire::{PROTOCOL_VERSION, TcpBody, WireIdentity, WireMember};
 const MAX_FRAME_LEN: usize = 4 * 1024 * 1024;
 
 /// How long we wait on a peer to connect or reply.
-const IO_TIMEOUT: Duration = Duration::from_secs(5);
+pub(crate) const IO_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct TcpConnection {
     stream: TcpStream,
@@ -221,7 +222,19 @@ pub async fn start_tcp_accept_loop(
                         from: tmp_node.identity(),
                         members: table.snapshot().into_iter().map(Into::into).collect(),
                     },
-                    TcpBody::JoinResponse { .. } | TcpBody::MembersResponse { .. } => {
+                    TcpBody::SyncRequest { from, members } => {
+                        // snapshot before merging what they sent, so the reply
+                        // doesn't hand their own rumors straight back to them
+                        let reply = TcpBody::SyncResponse {
+                            from: tmp_node.identity(),
+                            members: table.snapshot().into_iter().map(Into::into).collect(),
+                        };
+                        sync::absorb(&tmp_node, &table, &queue, from, addr, members);
+                        reply
+                    }
+                    TcpBody::JoinResponse { .. }
+                    | TcpBody::MembersResponse { .. }
+                    | TcpBody::SyncResponse { .. } => {
                         // a response arrives on the connection that sent the
                         // request, so it never comes in through this listener
                         warn!(%addr, "got a response where a request was expected");

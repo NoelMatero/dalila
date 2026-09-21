@@ -7,6 +7,7 @@ use membership::dissemination::GossipQueue;
 use membership::join::{join, start_tcp_accept_loop};
 use membership::node::LocalNode;
 use membership::state::MemberTable;
+use membership::sync::start_sync_loop;
 use membership::udp::{PendingAcks, start_udp_loop};
 use tokio::net::{TcpListener, UdpSocket};
 use tracing::info;
@@ -68,8 +69,15 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
         join(cfg.seeds, &node, &table, &queue).await?;
     }
 
-    // probing starts after the join, so the first shuffle already has the cluster in it
-    let detector = tokio::spawn(start_udp_detector(socket, node, table, queue, pending));
+    // both start after the join, so the first round already has the cluster in it
+    let detector = tokio::spawn(start_udp_detector(
+        socket,
+        node.clone(),
+        table.clone(),
+        queue.clone(),
+        pending,
+    ));
+    let sync_loop = tokio::spawn(start_sync_loop(node, table, queue));
 
     tokio::signal::ctrl_c()
         .await
@@ -78,6 +86,7 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     accept_loop.abort();
     udp_loop.abort();
     detector.abort();
+    sync_loop.abort();
 
     Ok(())
 }

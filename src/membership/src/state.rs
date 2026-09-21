@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::sync::{Arc, Mutex};
 
-use rand::seq::SliceRandom;
+use rand::seq::{IteratorRandom, SliceRandom};
 
 use crate::node::{Incarnation, Member, MemberState, NodeId};
 use crate::wire::{WireMember, WireMemberState};
@@ -53,6 +53,17 @@ impl MemberTable {
                 // a node's rumor about itself carries its bind address, which
                 // can be 0.0.0.0. nobody can reach that, so don't record it
                 if rumor.addr.ip().is_unspecified() {
+                    return MergeOutcome::Ignored;
+                }
+                // never learn about a member by being told it's dead. either
+                // we already reaped it, or we never knew it — and in both
+                // cases we agree, so there is nothing to record.
+                //
+                // this is what makes reaping stick. without it, the first peer
+                // to still hold the entry hands it back on the next sync, we
+                // start a fresh grace period, and the two of us pass the
+                // corpse back and forth for as long as the cluster runs
+                if rumor.state == WireMemberState::Dead {
                     return MergeOutcome::Ignored;
                 }
                 slot.insert(rumor.into());
@@ -119,13 +130,38 @@ impl MemberTable {
             .lock()
             .unwrap()
             .values()
-            .filter(|member| member.id != *exclude && member.state != MemberState::Dead)
+            .filter(|member| {
+                member.id != *exclude && !matches!(member.state, MemberState::Dead { .. })
+            })
             .cloned()
             .collect();
 
         candidates.shuffle(&mut rand::rng());
         candidates.truncate(count);
         candidates
+    }
+
+    /// One member picked at random to sync with, skipping the dead.
+    pub fn random_member(&self) -> Option<Member> {
+        self.0
+            .lock()
+            .unwrap()
+            .values()
+            .filter(|member| !matches!(member.state, MemberState::Dead { .. }))
+            .choose(&mut rand::rng())
+            .cloned()
+    }
+
+    /// Drop the given members from the table. Used to reap the long dead.
+    ///
+    /// Takes ids rather than a predicate so the decision is made outside the
+    /// lock, which keeps the timing rule next to the other timing rules in
+    /// the detector rather than buried in here.
+    pub fn remove(&self, ids: &[NodeId]) {
+        let mut members = self.0.lock().unwrap();
+        for id in ids {
+            members.remove(id);
+        }
     }
 
     pub fn members_where(&self, f: impl Fn(&Member) -> bool) -> Vec<Member> {
