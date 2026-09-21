@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
 use tokio::sync::oneshot;
@@ -15,7 +15,7 @@ use crate::{
     dissemination::{self, GossipQueue},
     node::{LocalNode, Member, NodeId},
     state::{MemberTable, MergeOutcome},
-    wire::{WireIdentity, WireMember},
+    wire::{PROTOCOL_VERSION, WireIdentity, WireMember},
 };
 
 /// How long a probe waits for its ack before the target counts as unreachable.
@@ -74,14 +74,26 @@ enum UdpBody {
 }
 
 impl UdpBody {
+    /// The payload is `(PROTOCOL_VERSION, UdpBody)`, the same shape a TCP
+    /// frame carries. A datagram is its own frame, so there is no length
+    /// prefix in front of it.
     fn encode_frame(&self) -> anyhow::Result<Vec<u8>> {
-        let payload = postcard::to_allocvec(self)?;
+        let payload = postcard::to_allocvec(&(PROTOCOL_VERSION, self))?;
         Ok(payload)
     }
 }
 
 fn decode_frame(payload: &[u8]) -> Result<UdpBody> {
-    let frame = postcard::from_bytes::<UdpBody>(payload)?;
+    // a peer on another version may lay the body out differently, or name a
+    // variant we have no arm for. check the version before decoding the rest,
+    // so a mismatch is reported as a mismatch instead of as a corrupt packet
+    match payload.first() {
+        Some(&PROTOCOL_VERSION) => {}
+        Some(other) => bail!("peer speaks protocol version {other}, we speak {PROTOCOL_VERSION}"),
+        None => bail!("received an empty datagram"),
+    }
+
+    let (_version, frame) = postcard::from_bytes::<(u8, UdpBody)>(payload)?;
     Ok(frame)
 }
 
@@ -338,7 +350,8 @@ pub async fn start_udp_loop(
         let frame = match decode_frame(&buf[..len]) {
             Ok(frame) => frame,
             Err(err) => {
-                warn!(%addr, "ignoring malformed datagram: {err:#}");
+                // malformed, or from a peer speaking a version we don't
+                warn!(%addr, "ignoring datagram: {err:#}");
                 continue;
             }
         };
