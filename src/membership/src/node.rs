@@ -49,7 +49,11 @@ pub enum MemberState {
     Suspect {
         since: Instant,
     },
-    Dead,
+    /// `since` works the same way, and drives the second timer: once a dead
+    /// entry is old enough, it is dropped from the table entirely.
+    Dead {
+        since: Instant,
+    },
 }
 
 #[derive(Debug, Clone)]

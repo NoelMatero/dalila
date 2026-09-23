@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use tokio::net::UdpSocket;
 use tokio::time::{self, MissedTickBehavior};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::dissemination::{self, GossipQueue};
 use crate::node::{LocalNode, Member, MemberState, NodeId};
@@ -16,6 +16,16 @@ pub const PROBE_INTERVAL: Duration = Duration::from_secs(1);
 
 /// How long a member stays suspect before it is declared dead.
 pub const SUSPICION_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// How long a dead member is kept in the table before it is dropped for good.
+///
+/// Not zero, because the entry is still doing work while it sits there. "Dead
+/// beats Alive at the same incarnation" is what stops a stale `Alive` rumor
+/// about the corpse from resurrecting it, and that rule needs an entry to
+/// apply to. The window has to outlast every copy of such a rumor still in
+/// flight; a rumor is sent `3 * ceil(log2(n))` times and drains on every ping
+/// and ack, so it is gone in a few seconds. Thirty is that with room to spare.
+pub const REAP_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// How many peers are asked to try a target our own probe couldn't reach.
 ///
@@ -53,6 +63,9 @@ pub async fn start_udp_detector(
 
         // 6. suspects nobody cleared in time are declared dead
         sweep_suspects(&node, &table, &queue);
+
+        // 7. and the long dead are forgotten
+        reap_dead(&table);
     }
 }
 
@@ -100,7 +113,9 @@ fn next_target(table: &MemberTable, order: &mut Vec<NodeId>) -> Option<Member> {
     for _ in 0..2 {
         while let Some(id) = order.pop() {
             match table.get(&id) {
-                Some(member) if member.state != MemberState::Dead => return Some(member),
+                Some(member) if !matches!(member.state, MemberState::Dead { .. }) => {
+                    return Some(member);
+                }
                 _ => continue,
             }
         }
@@ -141,6 +156,32 @@ fn sweep_suspects(node: &LocalNode, table: &MemberTable, queue: &GossipQueue) {
             warn!(id = %member.id, addr = %member.addr, "member declared dead");
         }
     }
+}
+
+/// Drop dead members that have been dead long enough.
+///
+/// Nothing is gossiped about a reap: it isn't news, it's this node agreeing
+/// with news it already has. Every other node is running the same timer on
+/// the same entry, so they all arrive here on their own within a second or
+/// two of each other — and whoever gets here last can't undo it, because a
+/// rumor that a node is dead is never enough to *create* an entry.
+fn reap_dead(table: &MemberTable) {
+    let expired: Vec<NodeId> = table
+        .members_where(
+            |m| matches!(m.state, MemberState::Dead { since } if since.elapsed() >= REAP_TIMEOUT),
+        )
+        .into_iter()
+        .map(|m| m.id)
+        .collect();
+
+    if expired.is_empty() {
+        return;
+    }
+
+    for id in &expired {
+        info!(%id, "member reaped");
+    }
+    table.remove(&expired);
 }
 
 /// Merge a new state for `member` at the incarnation we already have for it.

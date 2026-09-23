@@ -50,7 +50,7 @@ pub struct WireMember {
 impl From<MemberState> for WireMemberState {
     fn from(member_state: MemberState) -> Self {
         match member_state {
-            MemberState::Dead => WireMemberState::Dead,
+            MemberState::Dead { since: _ } => WireMemberState::Dead,
             MemberState::Alive => WireMemberState::Alive,
             MemberState::Suspect { since: _ } => WireMemberState::Suspect,
         }
@@ -74,12 +74,14 @@ impl From<Member> for WireMember {
     }
 }
 
-/// Converting in is the moment this node learns of a suspicion, so that is
-/// when its own clock for it starts.
+/// Converting in is the moment this node learns of a suspicion or a death, so
+/// that is when its own clock for it starts.
 impl From<WireMemberState> for MemberState {
     fn from(member_state: WireMemberState) -> Self {
         match member_state {
-            WireMemberState::Dead => MemberState::Dead,
+            WireMemberState::Dead => MemberState::Dead {
+                since: Instant::now(),
+            },
             WireMemberState::Alive => MemberState::Alive,
             WireMemberState::Suspect => MemberState::Suspect {
                 since: Instant::now(),
@@ -112,6 +114,22 @@ pub enum TcpBody {
     },
     MembersRequest,
     MembersResponse {
+        from: WireIdentity,
+        members: Vec<WireMember>,
+    },
+
+    /// "Here is everything I believe. Send me everything you believe."
+    ///
+    /// Over TCP rather than UDP because a whole table outgrows a datagram:
+    /// a rumor is 30-45 bytes, so a hundred members is already past the 1400
+    /// we allow ourselves there.
+    SyncRequest {
+        from: WireIdentity,
+        members: Vec<WireMember>,
+    },
+    /// The other half of the exchange. Sent before the request's rumors are
+    /// merged, so it doesn't echo back what it was just told.
+    SyncResponse {
         from: WireIdentity,
         members: Vec<WireMember>,
     },

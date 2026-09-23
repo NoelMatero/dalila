@@ -5,4 +5,5 @@ pub mod wire;
 pub mod detector;
 pub mod dissemination;
 pub mod state;
+pub mod sync;
 pub mod udp;
