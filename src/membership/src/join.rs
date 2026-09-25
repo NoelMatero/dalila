@@ -152,7 +152,7 @@ async fn join_through(
 
     match reply {
         Some(TcpBody::JoinResponse { from, members }) => {
-            handle_join_response(local_node, table, queue, from, seed, members);
+            handle_join_response(local_node, table, queue, from, members);
             Ok(())
         }
         Some(_) => bail!("seed replied with something other than a join response"),
@@ -216,7 +216,7 @@ pub async fn start_tcp_accept_loop(
 
                 let reply = match frame {
                     TcpBody::JoinRequest { from } => {
-                        handle_join_request(&tmp_node, &table, &queue, from, addr)
+                        handle_join_request(&tmp_node, &table, &queue, from)
                     }
                     TcpBody::MembersRequest => TcpBody::MembersResponse {
                         from: tmp_node.identity(),
@@ -229,7 +229,7 @@ pub async fn start_tcp_accept_loop(
                             from: tmp_node.identity(),
                             members: table.snapshot().into_iter().map(Into::into).collect(),
                         };
-                        sync::absorb(&tmp_node, &table, &queue, from, addr, members);
+                        sync::absorb(&tmp_node, &table, &queue, from, members);
                         reply
                     }
                     TcpBody::JoinResponse { .. }
@@ -256,18 +256,12 @@ pub fn handle_join_request(
     table: &MemberTable,
     queue: &GossipQueue,
     recvd_wire_identity: WireIdentity,
-    recvd_addr: SocketAddr,
 ) -> TcpBody {
     // snapshot before adding the joiner, so it isn't told about itself
     let members = table.snapshot().into_iter().map(Into::into).collect();
 
     // Added, so it's also queued: the rest of the cluster hears about the joiner by gossip
-    apply(
-        our_node,
-        table,
-        queue,
-        recvd_wire_identity.observed_at(recvd_addr),
-    );
+    apply(our_node, table, queue, recvd_wire_identity.into_member());
 
     TcpBody::JoinResponse {
         from: our_node.identity(),
@@ -280,17 +274,11 @@ pub fn handle_join_response(
     table: &MemberTable,
     queue: &GossipQueue,
     recvd_wire_identity: WireIdentity,
-    recvd_addr: SocketAddr,
     recvd_members: Vec<WireMember>,
 ) {
-    // the seed has no entry for itself in its own table, so build its record
-    // the same way it built ours: ip from the connection, port from the identity
-    apply(
-        our_node,
-        table,
-        queue,
-        recvd_wire_identity.observed_at(recvd_addr),
-    );
+    // the seed has no entry for itself in its own table, so its identity is
+    // where its record comes from
+    apply(our_node, table, queue, recvd_wire_identity.into_member());
 
     for member in recvd_members {
         apply(our_node, table, queue, member);

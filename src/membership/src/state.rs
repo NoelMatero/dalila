@@ -50,8 +50,9 @@ impl MemberTable {
         let mut members = self.0.lock().unwrap();
         match members.entry(rumor.id) {
             Entry::Vacant(slot) => {
-                // a node's rumor about itself carries its bind address, which
-                // can be 0.0.0.0. nobody can reach that, so don't record it
+                // a node never advertises 0.0.0.0 (it won't start without a
+                // real address), but a record nobody can reach is worthless,
+                // so refuse it rather than trust every peer to get that right
                 if rumor.addr.ip().is_unspecified() {
                     return MergeOutcome::Ignored;
                 }

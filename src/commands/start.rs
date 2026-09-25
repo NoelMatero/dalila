@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{Context, bail};
 use membership::detector::start_udp_detector;
 use membership::dissemination::GossipQueue;
 use membership::join::{join, start_tcp_accept_loop};
@@ -14,6 +14,7 @@ use tracing::info;
 
 pub struct Config {
     pub bind: SocketAddr,
+    pub advertise: Option<SocketAddr>,
     pub seeds: Vec<SocketAddr>,
 }
 
@@ -21,12 +22,30 @@ impl From<crate::cli::StartArgs> for Config {
     fn from(args: crate::cli::StartArgs) -> Self {
         Self {
             bind: args.bind,
+            advertise: args.advertise,
             seeds: args.join,
         }
     }
 }
 
 pub async fn execute(cfg: Config) -> anyhow::Result<()> {
+    // every peer records us at the address we advertise, so it has to be one
+    // they can connect to. checked before anything is bound, so a bad flag
+    // fails straight away
+    if cfg.advertise.unwrap_or(cfg.bind).ip().is_unspecified() {
+        match cfg.advertise {
+            Some(advertise) => {
+                bail!("--advertise {advertise} isn't an address peers can connect to")
+            }
+            None => bail!(
+                "--bind {} listens on every interface, which isn't an address peers can \
+                 connect to. pass --advertise HOST:PORT with the one they should use, \
+                 or --bind a specific address",
+                cfg.bind
+            ),
+        }
+    }
+
     // bind before joining: once the seed has recorded us, it can hand our
     // address to the next node to join, which must find us listening
     let listener = TcpListener::bind(cfg.bind)
@@ -45,7 +64,9 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     // recv_from take &self, so both can use it at once through the Arc
     let socket = Arc::new(socket);
 
-    let node = LocalNode::new(bound);
+    // without --advertise, the bound address. that has a specific IP (checked
+    // above), and the real port even if --bind asked for port 0
+    let node = LocalNode::new(cfg.advertise.unwrap_or(bound));
     let table = MemberTable::new();
     let queue = GossipQueue::new();
     let pending = PendingAcks::new();
@@ -63,7 +84,7 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
         queue.clone(),
         pending.clone(),
     ));
-    info!(id = %node.id, addr = %node.bind, "listening");
+    info!(id = %node.id, bind = %bound, addr = %node.addr, "listening");
 
     if !cfg.seeds.is_empty() {
         join(cfg.seeds, &node, &table, &queue).await?;

@@ -22,7 +22,7 @@ pub async fn execute(cfg: Config) -> Result<()> {
     // the node we asked isn't in its own table, so it gets a row of its own
     print_row(
         &from.id.to_string(),
-        &cfg.addr.to_string(),
+        &from.addr.to_string(),
         &from.incarnation.to_string(),
         "alive (queried)",
     );

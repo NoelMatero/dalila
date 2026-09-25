@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
@@ -76,7 +75,7 @@ async fn sync_with(
 
     match reply {
         Some(TcpBody::SyncResponse { from, members }) => {
-            absorb(node, table, queue, from, partner.addr, members);
+            absorb(node, table, queue, from, members);
             Ok(())
         }
         Some(_) => bail!("peer replied with something other than a sync response"),
@@ -87,17 +86,16 @@ async fn sync_with(
 /// Merge a peer's whole table, plus the peer's own record.
 ///
 /// The peer has no entry for itself in what it sent, the same way we have
-/// none for ourselves, so its identity is turned into a record here — ip from
-/// the connection, port from the identity, exactly as a join does it.
+/// none for ourselves, so its identity is turned into a record here, exactly
+/// as a join does it.
 pub fn absorb(
     node: &LocalNode,
     table: &MemberTable,
     queue: &GossipQueue,
     from: WireIdentity,
-    addr: SocketAddr,
     members: Vec<WireMember>,
 ) {
-    apply(node, table, queue, from.observed_at(addr));
+    apply(node, table, queue, from.into_member());
 
     for member in members {
         apply(node, table, queue, member);

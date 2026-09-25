@@ -78,19 +78,20 @@ impl Member {
 #[derive(Debug, Clone)]
 pub struct LocalNode {
     pub id: NodeId,
-    /// The address actually bound. If port 0 was asked for, this holds the
-    /// port the OS picked.
-    pub bind: SocketAddr,
+    /// Where peers reach this node. Always a real address, never 0.0.0.0:
+    /// this is what every peer records for us, so it has to be something
+    /// they can connect to.
+    pub addr: SocketAddr,
     /// Shared by every clone, like the member table. When one task refutes a
     /// rumor, every other task must advertise the new number from then on.
     incarnation: Arc<Mutex<Incarnation>>,
 }
 
 impl LocalNode {
-    pub fn new(bind: SocketAddr) -> Self {
+    pub fn new(addr: SocketAddr) -> Self {
         Self {
             id: NodeId::random(),
-            bind,
+            addr,
             incarnation: Arc::new(Mutex::new(Incarnation::ZERO)),
         }
     }
@@ -99,13 +100,11 @@ impl LocalNode {
         *self.incarnation.lock().unwrap()
     }
 
-    /// How this node introduces itself to a peer. The port is included and
-    /// the IP is not: the peer sees our IP on the connection, and `bind` may
-    /// be 0.0.0.0, which nobody can connect to.
+    /// How this node introduces itself to a peer.
     pub fn identity(&self) -> WireIdentity {
         WireIdentity {
             id: self.id,
-            port: self.bind.port(),
+            addr: self.addr,
             incarnation: self.incarnation(),
         }
     }
@@ -123,13 +122,10 @@ impl LocalNode {
     }
 
     /// "This node is alive", as a rumor to gossip.
-    ///
-    /// Carries `bind` as the address, which may be 0.0.0.0. That's fine for
-    /// nodes that already know us, since merge keeps the address it has.
     pub fn alive_rumor(&self) -> WireMember {
         WireMember {
             id: self.id,
-            addr: self.bind,
+            addr: self.addr,
             incarnation: self.incarnation(),
             state: WireMemberState::Alive,
         }
