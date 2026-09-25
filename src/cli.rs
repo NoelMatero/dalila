@@ -27,6 +27,11 @@ pub struct StartArgs {
     #[arg(long, default_value = "0.0.0.0:7946")]
     pub bind: SocketAddr,
 
+    /// The address peers use to reach this node. Needed when --bind is
+    /// 0.0.0.0, which isn't an address anyone can connect to.
+    #[arg(long, value_name = "HOST:PORT")]
+    pub advertise: Option<SocketAddr>,
+
     #[arg(long, value_name = "HOST:PORT")]
     pub join: Vec<SocketAddr>,
 }

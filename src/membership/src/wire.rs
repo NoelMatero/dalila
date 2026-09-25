@@ -7,25 +7,29 @@ use crate::node::{Incarnation, Member, MemberState, NodeId};
 
 /// Bump when a change to the types below means two builds can no longer
 /// understand each other.
-pub const PROTOCOL_VERSION: u8 = 1;
+///
+/// 2: `WireIdentity` carries a whole address instead of just a port.
+pub const PROTOCOL_VERSION: u8 = 2;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WireIdentity {
     pub id: NodeId,
-    pub port: u16,
+    /// Where this node can be reached, as the node itself states it.
+    ///
+    /// Stated rather than read off the connection: the IP a connection comes
+    /// from is whichever one the OS picked for that destination, and on a
+    /// machine with more than one address that need not be the one the node
+    /// listens on.
+    pub addr: SocketAddr,
     pub incarnation: Incarnation,
 }
 
 impl WireIdentity {
-    /// The member record for a peer we are talking to at `peer`.
-    ///
-    /// The IP comes from the connection, since that is how the two of us
-    /// actually reach each other. The port comes from the identity: a
-    /// connection's source port is an ephemeral one nobody is listening on.
-    pub fn observed_at(self, peer: SocketAddr) -> WireMember {
+    /// The member record for the node introducing itself.
+    pub fn into_member(self) -> WireMember {
         WireMember {
             id: self.id,
-            addr: SocketAddr::new(peer.ip(), self.port),
+            addr: self.addr,
             incarnation: self.incarnation,
             state: WireMemberState::Alive,
         }
