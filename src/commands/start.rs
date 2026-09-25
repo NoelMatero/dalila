@@ -12,10 +12,13 @@ use membership::udp::{PendingAcks, start_udp_loop};
 use tokio::net::{TcpListener, UdpSocket};
 use tracing::info;
 
+use crate::proxy::{self, start_proxy};
+
 pub struct Config {
     pub bind: SocketAddr,
     pub advertise: Option<SocketAddr>,
     pub seeds: Vec<SocketAddr>,
+    pub proxy: Option<proxy::Config>,
 }
 
 impl From<crate::cli::StartArgs> for Config {
@@ -24,6 +27,14 @@ impl From<crate::cli::StartArgs> for Config {
             bind: args.bind,
             advertise: args.advertise,
             seeds: args.join,
+            // clap only lets these through together, so both or neither
+            proxy: args
+                .proxy
+                .zip(args.backend_port)
+                .map(|(listen, backend_port)| proxy::Config {
+                    listen,
+                    backend_port,
+                }),
         }
     }
 }
@@ -64,6 +75,17 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     // recv_from take &self, so both can use it at once through the Arc
     let socket = Arc::new(socket);
 
+    // also before joining: if the proxy port is taken, fail now. finding out
+    // after the join would mean leaving the cluster seconds after entering it
+    let proxy_listener = match &cfg.proxy {
+        Some(proxy) => Some(
+            TcpListener::bind(proxy.listen)
+                .await
+                .with_context(|| format!("could not bind proxy {}", proxy.listen))?,
+        ),
+        None => None,
+    };
+
     // without --advertise, the bound address. that has a specific IP (checked
     // above), and the real port even if --bind asked for port 0
     let node = LocalNode::new(cfg.advertise.unwrap_or(bound));
@@ -90,7 +112,20 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
         join(cfg.seeds, &node, &table, &queue).await?;
     }
 
-    // both start after the join, so the first round already has the cluster in it
+    // these start after the join, so the first round already has the cluster
+    // in it. for the proxy, that means the first client isn't stuck with just us
+    let proxy = match (proxy_listener, &cfg.proxy) {
+        (Some(listener), Some(proxy)) => {
+            info!(addr = %listener.local_addr()?, backend_port = proxy.backend_port, "proxying");
+            Some(tokio::spawn(start_proxy(
+                listener,
+                node.clone(),
+                table.clone(),
+                proxy.backend_port,
+            )))
+        }
+        _ => None,
+    };
     let detector = tokio::spawn(start_udp_detector(
         socket,
         node.clone(),
@@ -108,6 +143,9 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     udp_loop.abort();
     detector.abort();
     sync_loop.abort();
+    if let Some(proxy) = proxy {
+        proxy.abort();
+    }
 
     Ok(())
 }
