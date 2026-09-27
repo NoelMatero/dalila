@@ -13,6 +13,7 @@ membership = { path = "src/membership" }
 tokio = { version = "1.53.1", features = [
   "rt-multi-thread",
   "macros",
+  "io-util",
   "net",
   "time",
   "sync",

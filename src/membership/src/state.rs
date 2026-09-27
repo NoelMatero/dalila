@@ -165,6 +165,16 @@ impl MemberTable {
         }
     }
 
+    /// Every member currently believed alive: the set anything outside this
+    /// crate wants when it asks "who can I send work to?"
+    ///
+    /// Suspects are left out. A suspect has already missed a direct probe and
+    /// an indirect round, which is real evidence, and whichever way it turns
+    /// out, it's settled in a few seconds.
+    pub fn alive(&self) -> Vec<Member> {
+        self.members_where(|m| matches!(m.state, MemberState::Alive))
+    }
+
     pub fn members_where(&self, f: impl Fn(&Member) -> bool) -> Vec<Member> {
         self.0
             .lock()

@@ -34,6 +34,14 @@ pub struct StartArgs {
 
     #[arg(long, value_name = "HOST:PORT")]
     pub join: Vec<SocketAddr>,
+
+    /// Accept client connections here and forward each to a live member.
+    #[arg(long, value_name = "HOST:PORT", requires = "backend_port")]
+    pub proxy: Option<SocketAddr>,
+
+    /// The port every member serves the proxied service on.
+    #[arg(long, value_name = "PORT", requires = "proxy")]
+    pub backend_port: Option<u16>,
 }
 
 #[derive(Debug, Args)]
