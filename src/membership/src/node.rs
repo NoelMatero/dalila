@@ -1,5 +1,6 @@
 use std::fmt;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
@@ -85,6 +86,13 @@ pub struct LocalNode {
     /// Shared by every clone, like the member table. When one task refutes a
     /// rumor, every other task must advertise the new number from then on.
     incarnation: Arc<Mutex<Incarnation>>,
+    /// Set once this node is shutting down on purpose. From then on it lets
+    /// rumors of its death stand instead of refuting them.
+    ///
+    /// Only read or written while holding `incarnation`'s lock, so a refute
+    /// is either finished before `leave` or never happens. An atomic only
+    /// because it lives outside that mutex.
+    leaving: Arc<AtomicBool>,
 }
 
 impl LocalNode {
@@ -93,6 +101,7 @@ impl LocalNode {
             id: NodeId::random(),
             addr,
             incarnation: Arc::new(Mutex::new(Incarnation::ZERO)),
+            leaving: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -111,14 +120,28 @@ impl LocalNode {
 
     /// Answer a rumor that this node is suspect or dead: move our incarnation
     /// past it, so our "alive" outranks it everywhere. Returns the incarnation
-    /// to advertise from now on.
-    pub fn refute(&self, rumored: Incarnation) -> Incarnation {
+    /// to advertise from now on, or `None` if this node is leaving and the
+    /// rumor should stand.
+    pub fn refute(&self, rumored: Incarnation) -> Option<Incarnation> {
         let mut current = self.incarnation.lock().unwrap();
+        if self.leaving.load(Ordering::Relaxed) {
+            return None;
+        }
         // a rumor older than our current incarnation is already beaten by it
         if rumored >= *current {
             *current = Incarnation::superseding(rumored);
         }
-        *current
+        Some(*current)
+    }
+
+    /// Stop defending this node's liveness. Its incarnation is final from
+    /// here on, so a "dead" at that incarnation outranks every "alive" it
+    /// ever sent.
+    pub fn leave(&self) {
+        // under the lock: a refute already past its check finishes first, and
+        // the number we announce our death at can't move after this
+        let _current = self.incarnation.lock().unwrap();
+        self.leaving.store(true, Ordering::Relaxed);
     }
 
     /// "This node is alive", as a rumor to gossip.

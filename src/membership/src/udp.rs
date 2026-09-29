@@ -13,9 +13,9 @@ use tracing::{debug, info, warn};
 
 use crate::{
     dissemination::{self, GossipQueue},
-    node::{LocalNode, Member, NodeId},
+    node::{LocalNode, Member, MemberState, NodeId},
     state::{MemberTable, MergeOutcome},
-    wire::{PROTOCOL_VERSION, WireIdentity, WireMember},
+    wire::{PROTOCOL_VERSION, WireIdentity, WireMember, WireMemberState},
 };
 
 /// How long a probe waits for its ack before the target counts as unreachable.
@@ -71,6 +71,12 @@ enum UdpBody {
         target: NodeId,
         gossip: Vec<WireMember>,
     },
+
+    /// "I'm shutting down. Count me as dead."
+    ///
+    /// Sent straight to every member, once, as the last thing a node does.
+    /// Anyone it misses hears it by gossip from someone it reached.
+    Leave { from: WireIdentity },
 }
 
 impl UdpBody {
@@ -289,6 +295,47 @@ async fn handle_ping_req(
     }
 }
 
+/// Tell every member we know of that this node is going away. Returns how
+/// many we told.
+///
+/// Call `LocalNode::leave` first. The leave is a "dead" at our current
+/// incarnation, and it only holds if that number can't move afterwards.
+pub async fn announce_leave(socket: &UdpSocket, node: &LocalNode, table: &MemberTable) -> usize {
+    let body = UdpBody::Leave {
+        from: node.identity(),
+    };
+
+    // suspects too: all a suspicion says is that someone couldn't reach them
+    let members = table.members_where(|m| !matches!(m.state, MemberState::Dead { .. }));
+
+    let mut told = 0;
+    for member in &members {
+        match send_udp(socket, member.addr, &body).await {
+            Ok(()) => told += 1,
+            Err(err) => warn!(addr = %member.addr, "could not send leave: {err:#}"),
+        }
+    }
+    told
+}
+
+/// A peer says it is leaving: record it as dead at the incarnation it gave.
+///
+/// Same incarnation, and dead outranks alive, so this beats every "alive"
+/// the peer ever sent without a special case in the merge rule.
+fn handle_leave(node: &LocalNode, table: &MemberTable, queue: &GossipQueue, from: WireIdentity) {
+    let id = from.id;
+    let mut rumor = from.into_member();
+    rumor.state = WireMemberState::Dead;
+
+    // through `apply` like any other news, so it's queued and gossiped on to
+    // whoever the leaving node's own message didn't reach
+    match dissemination::apply(node, table, queue, rumor) {
+        MergeOutcome::Updated => info!(%id, "member left"),
+        // already dead to us, or never known (a dead rumor never creates an entry)
+        _ => debug!(%id, "leave from a member we don't count as alive"),
+    }
+}
+
 /// Complete whatever probe was waiting on news about `subject`.
 fn handle_ack(pending: &PendingAcks, seq: u32, subject: NodeId) {
     pending.resolve(seq, subject);
@@ -411,6 +458,7 @@ pub async fn start_udp_loop(
                 // carried it. that is the whole point of the round
                 handle_ack(&pending, seq, target);
             }
+            UdpBody::Leave { from } => handle_leave(&node, &table, &queue, from),
         }
     }
 }

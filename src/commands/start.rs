@@ -8,8 +8,9 @@ use membership::join::{join, start_tcp_accept_loop};
 use membership::node::LocalNode;
 use membership::state::MemberTable;
 use membership::sync::start_sync_loop;
-use membership::udp::{PendingAcks, start_udp_loop};
+use membership::udp::{PendingAcks, announce_leave, start_udp_loop};
 use tokio::net::{TcpListener, UdpSocket};
+use tokio::signal::unix::{SignalKind, signal};
 use tracing::info;
 
 use crate::proxy::{self, start_proxy};
@@ -127,18 +128,22 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
         _ => None,
     };
     let detector = tokio::spawn(start_udp_detector(
-        socket,
+        socket.clone(),
         node.clone(),
         table.clone(),
         queue.clone(),
         pending,
     ));
-    let sync_loop = tokio::spawn(start_sync_loop(node, table, queue));
+    let sync_loop = tokio::spawn(start_sync_loop(node.clone(), table.clone(), queue));
 
-    tokio::signal::ctrl_c()
-        .await
-        .context("could not listen for ctrl-c")?;
+    shutdown_signal().await?;
     info!("shutting down");
+
+    // first, so nothing still running can refute our death from here on.
+    // aborting doesn't reach tasks those loops spawned (a TCP connection
+    // being served, a relayed probe), and any of them could hear the rumor
+    node.leave();
+
     accept_loop.abort();
     udp_loop.abort();
     detector.abort();
@@ -147,5 +152,20 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
         proxy.abort();
     }
 
+    // no need to linger afterwards: send_to returns once the OS has the
+    // datagram, and exiting doesn't take it back
+    let told = announce_leave(&socket, &node, &table).await;
+    info!(told, "left the cluster");
+
     Ok(())
+}
+
+/// Wait for ctrl-c, or for SIGTERM: what `kill`, `systemctl stop` and
+/// `docker stop` send.
+async fn shutdown_signal() -> anyhow::Result<()> {
+    let mut terminate = signal(SignalKind::terminate()).context("could not listen for SIGTERM")?;
+    tokio::select! {
+        ctrl_c = tokio::signal::ctrl_c() => ctrl_c.context("could not listen for ctrl-c"),
+        _ = terminate.recv() => Ok(()),
+    }
 }

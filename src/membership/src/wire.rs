@@ -9,7 +9,8 @@ use crate::node::{Incarnation, Member, MemberState, NodeId};
 /// understand each other.
 ///
 /// 2: `WireIdentity` carries a whole address instead of just a port.
-pub const PROTOCOL_VERSION: u8 = 2;
+/// 3: `UdpBody::Leave`.
+pub const PROTOCOL_VERSION: u8 = 3;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WireIdentity {
