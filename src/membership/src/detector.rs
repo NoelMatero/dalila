@@ -198,6 +198,8 @@ fn mark(
         addr: member.addr,
         incarnation: member.incarnation,
         state,
+        // a suspicion is about the agent, not its app. keep what it last said
+        ready: member.ready,
     };
     dissemination::apply(node, table, queue, rumor) == MergeOutcome::Updated
 }

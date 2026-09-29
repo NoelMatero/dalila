@@ -13,12 +13,15 @@ use tokio::net::{TcpListener, UdpSocket};
 use tokio::signal::unix::{SignalKind, signal};
 use tracing::info;
 
+use crate::health::start_health_check;
 use crate::proxy::{self, start_proxy};
 
 pub struct Config {
     pub bind: SocketAddr,
     pub advertise: Option<SocketAddr>,
     pub seeds: Vec<SocketAddr>,
+    /// Where this node's own app listens, to check it. `None`: not checked.
+    pub backend_port: Option<u16>,
     pub proxy: Option<proxy::Config>,
 }
 
@@ -28,7 +31,9 @@ impl From<crate::cli::StartArgs> for Config {
             bind: args.bind,
             advertise: args.advertise,
             seeds: args.join,
-            // clap only lets these through together, so both or neither
+            backend_port: args.backend_port,
+            // clap won't take --proxy without --backend-port, so this is only
+            // None when there's no --proxy
             proxy: args
                 .proxy
                 .zip(args.backend_port)
@@ -109,6 +114,18 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     ));
     info!(id = %node.id, bind = %bound, addr = %node.addr, "listening");
 
+    // before joining, so the first check's answer has a chance to be in the
+    // introduction the seed gets. if it isn't, it follows a second later by
+    // gossip, like any other change
+    let health = cfg.backend_port.map(|backend_port| {
+        tokio::spawn(start_health_check(
+            node.clone(),
+            table.clone(),
+            queue.clone(),
+            backend_port,
+        ))
+    });
+
     if !cfg.seeds.is_empty() {
         join(cfg.seeds, &node, &table, &queue).await?;
     }
@@ -150,6 +167,9 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     sync_loop.abort();
     if let Some(proxy) = proxy {
         proxy.abort();
+    }
+    if let Some(health) = health {
+        health.abort();
     }
 
     // no need to linger afterwards: send_to returns once the OS has the
