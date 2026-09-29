@@ -91,7 +91,12 @@ pub fn apply(
         MergeOutcome::Ignored => {}
         MergeOutcome::Refute { rumored } => {
             let before = node.incarnation();
-            let now = node.refute(rumored);
+            let Some(now) = node.refute(rumored) else {
+                // we're shutting down, and this is our own leave coming back
+                // to us. refuting it would bring us back to life
+                debug!(state = ?rumor.state, %rumored, "rumor about us, but we're leaving; letting it stand");
+                return outcome;
+            };
             if now != before {
                 warn!(state = ?rumor.state, %rumored, incarnation = %now, "a peer doubts we're alive; refuting");
             } else {
