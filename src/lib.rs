@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod commands;
+pub mod health;
 pub mod proxy;
 
 use anyhow::Result;

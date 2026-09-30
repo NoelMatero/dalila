@@ -24,14 +24,14 @@ pub async fn execute(cfg: Config) -> Result<()> {
         &from.id.to_string(),
         &from.addr.to_string(),
         &from.incarnation.to_string(),
-        "alive (queried)",
+        &format!("{} (queried)", state_label(WireMemberState::Alive, from.ready)),
     );
     for m in members {
         print_row(
             &m.id.to_string(),
             &m.addr.to_string(),
             &m.incarnation.to_string(),
-            state_label(m.state),
+            &state_label(m.state, m.ready),
         );
     }
 
@@ -42,10 +42,16 @@ fn print_row(id: &str, addr: &str, incarnation: &str, state: &str) {
     println!("{id:<36}  {addr:<21}  {incarnation:>11}  {state}");
 }
 
-fn state_label(state: WireMemberState) -> &'static str {
-    match state {
+fn state_label(state: WireMemberState, ready: bool) -> String {
+    let state = match state {
         WireMemberState::Alive => "alive",
         WireMemberState::Suspect => "suspect",
         WireMemberState::Dead => "dead",
+    };
+    // only worth saying when it's news: nearly every member is ready
+    if ready {
+        state.to_string()
+    } else {
+        format!("{state}, app down")
     }
 }

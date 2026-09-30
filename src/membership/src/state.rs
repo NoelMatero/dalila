@@ -72,13 +72,18 @@ impl MemberTable {
             }
             Entry::Occupied(mut slot) => {
                 if supersedes(&rumor, slot.get()) {
-                    // only incarnation and state change. the address stays as
-                    // first learned: a process never moves (a restart gets a
-                    // new id), and a rumor may carry an address that is worse
-                    // than ours, like the 0.0.0.0 above
+                    // only incarnation, state and readiness change. the address
+                    // stays as first learned: a process never moves (a restart
+                    // gets a new id), and a rumor may carry an address that is
+                    // worse than ours, like the 0.0.0.0 above
+                    //
+                    // readiness needs no rank of its own. only the member
+                    // changes it, and always with a new incarnation, so two
+                    // rumors at one incarnation never disagree about it
                     let member = slot.get_mut();
                     member.incarnation = rumor.incarnation;
                     member.state = rumor.state.into();
+                    member.ready = rumor.ready;
                     MergeOutcome::Updated
                 } else {
                     MergeOutcome::Ignored
@@ -165,14 +170,14 @@ impl MemberTable {
         }
     }
 
-    /// Every member currently believed alive: the set anything outside this
-    /// crate wants when it asks "who can I send work to?"
+    /// Every member believed alive whose app is answering: the set anything
+    /// outside this crate wants when it asks "who can I send work to?"
     ///
     /// Suspects are left out. A suspect has already missed a direct probe and
     /// an indirect round, which is real evidence, and whichever way it turns
     /// out, it's settled in a few seconds.
-    pub fn alive(&self) -> Vec<Member> {
-        self.members_where(|m| matches!(m.state, MemberState::Alive))
+    pub fn ready(&self) -> Vec<Member> {
+        self.members_where(|m| matches!(m.state, MemberState::Alive) && m.ready)
     }
 
     pub fn members_where(&self, f: impl Fn(&Member) -> bool) -> Vec<Member> {

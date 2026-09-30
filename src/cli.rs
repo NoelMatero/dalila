@@ -39,8 +39,10 @@ pub struct StartArgs {
     #[arg(long, value_name = "HOST:PORT", requires = "backend_port")]
     pub proxy: Option<SocketAddr>,
 
-    /// The port every member serves the proxied service on.
-    #[arg(long, value_name = "PORT", requires = "proxy")]
+    /// The port the app listens on, the same on every member. This node
+    /// checks its own every second, and stops taking work while it doesn't
+    /// answer. Without it, the node is never checked and always takes work.
+    #[arg(long, value_name = "PORT")]
     pub backend_port: Option<u16>,
 }
 

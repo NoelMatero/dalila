@@ -110,20 +110,24 @@ async fn forward(
     warn!(client = %client_addr, tried = backends.len(), "no backend accepted the connection");
 }
 
-/// Where the service is on every member believed alive, this node included.
+/// Where the service is on every member that can take work, this node
+/// included if it can too.
 ///
 /// Sorted, so the round-robin walks the same order from one connection to the
 /// next. `HashMap` order would be different every time the table changed.
 fn backends(node: &LocalNode, table: &MemberTable, backend_port: u16) -> Vec<SocketAddr> {
     let mut addrs: Vec<SocketAddr> = table
-        .alive()
+        .ready()
         .iter()
         .map(|member| SocketAddr::new(member.addr.ip(), backend_port))
         .collect();
 
     // we're not in our own table, but our own service is as good a backend as
-    // anyone's. same rule as for the others: our advertised IP, the app's port
-    addrs.push(SocketAddr::new(node.addr.ip(), backend_port));
+    // anyone's. same rule as for the others: our advertised IP, the app's
+    // port, and only while its check passes
+    if node.is_ready() {
+        addrs.push(SocketAddr::new(node.addr.ip(), backend_port));
+    }
 
     addrs.sort();
     // two members on one IP (two agents on one machine) both map to the same

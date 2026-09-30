@@ -10,7 +10,8 @@ use crate::node::{Incarnation, Member, MemberState, NodeId};
 ///
 /// 2: `WireIdentity` carries a whole address instead of just a port.
 /// 3: `UdpBody::Leave`.
-pub const PROTOCOL_VERSION: u8 = 3;
+/// 4: members say whether their app is ready (`ready`).
+pub const PROTOCOL_VERSION: u8 = 4;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WireIdentity {
@@ -23,6 +24,7 @@ pub struct WireIdentity {
     /// listens on.
     pub addr: SocketAddr,
     pub incarnation: Incarnation,
+    pub ready: bool,
 }
 
 impl WireIdentity {
@@ -33,6 +35,7 @@ impl WireIdentity {
             addr: self.addr,
             incarnation: self.incarnation,
             state: WireMemberState::Alive,
+            ready: self.ready,
         }
     }
 }
@@ -50,6 +53,7 @@ pub struct WireMember {
     pub addr: SocketAddr,
     pub incarnation: Incarnation,
     pub state: WireMemberState,
+    pub ready: bool,
 }
 
 impl From<MemberState> for WireMemberState {
@@ -69,6 +73,7 @@ impl WireMember {
             addr: member.addr,
             incarnation: member.incarnation,
             state: WireMemberState::from(member.state),
+            ready: member.ready,
         }
     }
 }
@@ -102,6 +107,7 @@ impl From<WireMember> for Member {
             addr: member.addr,
             incarnation: member.incarnation,
             state: MemberState::from(member.state),
+            ready: member.ready,
         }
     }
 }

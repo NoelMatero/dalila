@@ -63,6 +63,10 @@ pub struct Member {
     pub addr: SocketAddr,
     pub incarnation: Incarnation,
     pub state: MemberState,
+    /// Whether the member's app answered its own last check. Separate from
+    /// `state`: a member whose app is down is still a member, and still gets
+    /// probed. It just shouldn't be sent work.
+    pub ready: bool,
 }
 
 impl Member {
@@ -72,6 +76,7 @@ impl Member {
             addr,
             incarnation,
             state: MemberState::Alive,
+            ready: true,
         }
     }
 }
@@ -93,6 +98,12 @@ pub struct LocalNode {
     /// is either finished before `leave` or never happens. An atomic only
     /// because it lives outside that mutex.
     leaving: Arc<AtomicBool>,
+    /// Whether this node's own app answered its last check. Starts true, and
+    /// stays true on a node that doesn't check.
+    ///
+    /// Same rule as `leaving`: only touched under `incarnation`'s lock. A
+    /// change moves the incarnation, and the two have to go out as a pair.
+    ready: Arc<AtomicBool>,
 }
 
 impl LocalNode {
@@ -102,6 +113,7 @@ impl LocalNode {
             addr,
             incarnation: Arc::new(Mutex::new(Incarnation::ZERO)),
             leaving: Arc::new(AtomicBool::new(false)),
+            ready: Arc::new(AtomicBool::new(true)),
         }
     }
 
@@ -109,12 +121,26 @@ impl LocalNode {
         *self.incarnation.lock().unwrap()
     }
 
+    pub fn is_ready(&self) -> bool {
+        self.current().1
+    }
+
+    /// Incarnation and readiness, read together. Read separately, a change
+    /// could land in between, and we'd send the new number with the old
+    /// readiness. Peers would keep that until our next change.
+    fn current(&self) -> (Incarnation, bool) {
+        let incarnation = self.incarnation.lock().unwrap();
+        (*incarnation, self.ready.load(Ordering::Relaxed))
+    }
+
     /// How this node introduces itself to a peer.
     pub fn identity(&self) -> WireIdentity {
+        let (incarnation, ready) = self.current();
         WireIdentity {
             id: self.id,
             addr: self.addr,
-            incarnation: self.incarnation(),
+            incarnation,
+            ready,
         }
     }
 
@@ -144,13 +170,33 @@ impl LocalNode {
         self.leaving.store(true, Ordering::Relaxed);
     }
 
+    /// Record whether this node's app is answering. True if that changed, in
+    /// which case the caller should gossip `alive_rumor`.
+    ///
+    /// A change moves the incarnation up one. Peers only take news about us
+    /// at a higher incarnation than they hold, and only we can move ours, so
+    /// this works the same way as a refute.
+    pub fn set_ready(&self, ready: bool) -> bool {
+        let mut current = self.incarnation.lock().unwrap();
+        // leaving: the incarnation is final (see `leave`), and nobody is
+        // sending us work any more anyway
+        if self.leaving.load(Ordering::Relaxed) || self.ready.load(Ordering::Relaxed) == ready {
+            return false;
+        }
+        *current = Incarnation::superseding(*current);
+        self.ready.store(ready, Ordering::Relaxed);
+        true
+    }
+
     /// "This node is alive", as a rumor to gossip.
     pub fn alive_rumor(&self) -> WireMember {
+        let (incarnation, ready) = self.current();
         WireMember {
             id: self.id,
             addr: self.addr,
-            incarnation: self.incarnation(),
+            incarnation,
             state: WireMemberState::Alive,
+            ready,
         }
     }
 }
