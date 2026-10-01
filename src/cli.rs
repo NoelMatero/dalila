@@ -44,6 +44,19 @@ pub struct StartArgs {
     /// answer. Without it, the node is never checked and always takes work.
     #[arg(long, value_name = "PORT")]
     pub backend_port: Option<u16>,
+
+    /// Answer `GET /backends` here, with every member that can take work, for
+    /// a proxy other than the built-in one. `--api` on its own means
+    /// 127.0.0.1:7900. There's no auth, so keep it where only this machine
+    /// can reach it.
+    #[arg(
+        long,
+        value_name = "HOST:PORT",
+        num_args = 0..=1,
+        default_missing_value = "127.0.0.1:7900",
+        requires = "backend_port"
+    )]
+    pub api: Option<SocketAddr>,
 }
 
 #[derive(Debug, Args)]

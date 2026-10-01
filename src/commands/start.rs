@@ -11,8 +11,9 @@ use membership::sync::start_sync_loop;
 use membership::udp::{PendingAcks, announce_leave, start_udp_loop};
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::signal::unix::{SignalKind, signal};
-use tracing::info;
+use tracing::{info, warn};
 
+use crate::api::{self, start_api};
 use crate::health::start_health_check;
 use crate::proxy::{self, start_proxy};
 
@@ -23,6 +24,7 @@ pub struct Config {
     /// Where this node's own app listens, to check it. `None`: not checked.
     pub backend_port: Option<u16>,
     pub proxy: Option<proxy::Config>,
+    pub api: Option<api::Config>,
 }
 
 impl From<crate::cli::StartArgs> for Config {
@@ -38,6 +40,14 @@ impl From<crate::cli::StartArgs> for Config {
                 .proxy
                 .zip(args.backend_port)
                 .map(|(listen, backend_port)| proxy::Config {
+                    listen,
+                    backend_port,
+                }),
+            // same: --api needs --backend-port
+            api: args
+                .api
+                .zip(args.backend_port)
+                .map(|(listen, backend_port)| api::Config {
                     listen,
                     backend_port,
                 }),
@@ -88,6 +98,15 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
             TcpListener::bind(proxy.listen)
                 .await
                 .with_context(|| format!("could not bind proxy {}", proxy.listen))?,
+        ),
+        None => None,
+    };
+    // same for the API
+    let api_listener = match &cfg.api {
+        Some(api) => Some(
+            TcpListener::bind(api.listen)
+                .await
+                .with_context(|| format!("could not bind api {}", api.listen))?,
         ),
         None => None,
     };
@@ -144,6 +163,24 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
         }
         _ => None,
     };
+    let api = match (api_listener, &cfg.api) {
+        (Some(listener), Some(api)) => {
+            let addr = listener.local_addr()?;
+            info!(%addr, "api listening");
+            if !addr.ip().is_loopback() {
+                // allowed, because a trusted private network is a real use.
+                // but there's no auth yet, so say so
+                warn!(%addr, "the api has no auth and is reachable from other machines");
+            }
+            Some(tokio::spawn(start_api(
+                listener,
+                node.clone(),
+                table.clone(),
+                api.backend_port,
+            )))
+        }
+        _ => None,
+    };
     let detector = tokio::spawn(start_udp_detector(
         socket.clone(),
         node.clone(),
@@ -167,6 +204,9 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     sync_loop.abort();
     if let Some(proxy) = proxy {
         proxy.abort();
+    }
+    if let Some(api) = api {
+        api.abort();
     }
     if let Some(health) = health {
         health.abort();
