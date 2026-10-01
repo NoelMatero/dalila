@@ -115,7 +115,7 @@ async fn forward(
 ///
 /// Sorted, so the round-robin walks the same order from one connection to the
 /// next. `HashMap` order would be different every time the table changed.
-fn backends(node: &LocalNode, table: &MemberTable, backend_port: u16) -> Vec<SocketAddr> {
+pub fn backends(node: &LocalNode, table: &MemberTable, backend_port: u16) -> Vec<SocketAddr> {
     let mut addrs: Vec<SocketAddr> = table
         .ready()
         .iter()
