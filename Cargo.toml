@@ -8,7 +8,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.104"
-axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "json"] }
+axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "json", "query"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 membership = { path = "src/membership" }
 serde = { version = "1.0.229", features = ["derive"] }

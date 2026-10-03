@@ -51,9 +51,20 @@ pub struct StartArgs {
     )]
     pub key: Option<String>,
 
+    /// What this node runs, like `web` or `api`. Repeat for more than one.
+    /// Gossiped with the rest of its record, so every proxy in the cluster
+    /// can pick members by tag. Up to 4, each up to 16 characters.
+    #[arg(long = "tag", value_name = "TAG")]
+    pub tags: Vec<String>,
+
     /// Accept client connections here and forward each to a live member.
     #[arg(long, value_name = "HOST:PORT", requires = "backend_port")]
     pub proxy: Option<SocketAddr>,
+
+    /// Only forward to members with this tag. Without it, the proxy uses
+    /// every member that can take work.
+    #[arg(long, value_name = "TAG", requires = "proxy")]
+    pub proxy_to: Option<String>,
 
     /// The port the app listens on, the same on every member. This node
     /// checks its own every second, and stops taking work while it doesn't

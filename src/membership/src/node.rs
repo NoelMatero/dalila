@@ -68,6 +68,9 @@ pub struct Member {
     /// `state`: a member whose app is down is still a member, and still gets
     /// probed. It just shouldn't be sent work.
     pub ready: bool,
+    /// What the member says it runs, like `web` or `api`. A proxy can be told
+    /// to send work only to members with a given tag.
+    pub tags: Vec<String>,
 }
 
 impl Member {
@@ -78,6 +81,7 @@ impl Member {
             incarnation,
             state: MemberState::Alive,
             ready: true,
+            tags: Vec::new(),
         }
     }
 }
@@ -109,10 +113,14 @@ pub struct LocalNode {
     /// against. Here because nearly everything that sends or receives already
     /// has the node at hand.
     key: ClusterKey,
+    /// Set at startup and never changed, so unlike `ready` it needs no lock
+    /// and no incarnation of its own: every rumor about us carries the same
+    /// tags.
+    tags: Arc<[String]>,
 }
 
 impl LocalNode {
-    pub fn new(addr: SocketAddr, key: ClusterKey) -> Self {
+    pub fn new(addr: SocketAddr, key: ClusterKey, tags: Vec<String>) -> Self {
         Self {
             id: NodeId::random(),
             addr,
@@ -120,7 +128,12 @@ impl LocalNode {
             leaving: Arc::new(AtomicBool::new(false)),
             ready: Arc::new(AtomicBool::new(true)),
             key,
+            tags: tags.into(),
         }
+    }
+
+    pub fn has_tag(&self, tag: &str) -> bool {
+        self.tags.iter().any(|t| t == tag)
     }
 
     pub fn key(&self) -> &ClusterKey {
@@ -151,6 +164,7 @@ impl LocalNode {
             addr: self.addr,
             incarnation,
             ready,
+            tags: self.tags.to_vec(),
         }
     }
 
@@ -207,6 +221,7 @@ impl LocalNode {
             incarnation,
             state: WireMemberState::Alive,
             ready,
+            tags: self.tags.to_vec(),
         }
     }
 }
