@@ -28,12 +28,13 @@ pub async fn execute(cfg: Config) -> Result<()> {
     let (from, mut members) = fetch_members(cfg.addr, key).await?;
     members.sort_by_key(|m| m.addr);
 
-    print_row("ID", "ADDRESS", "INCARNATION", "STATE");
+    print_row("ID", "ADDRESS", "INCARNATION", "TAGS", "STATE");
     // the node we asked isn't in its own table, so it gets a row of its own
     print_row(
         &from.id.to_string(),
         &from.addr.to_string(),
         &from.incarnation.to_string(),
+        &tags_label(&from.tags),
         &format!("{} (queried)", state_label(WireMemberState::Alive, from.ready)),
     );
     for m in members {
@@ -41,6 +42,7 @@ pub async fn execute(cfg: Config) -> Result<()> {
             &m.id.to_string(),
             &m.addr.to_string(),
             &m.incarnation.to_string(),
+            &tags_label(&m.tags),
             &state_label(m.state, m.ready),
         );
     }
@@ -48,8 +50,17 @@ pub async fn execute(cfg: Config) -> Result<()> {
     Ok(())
 }
 
-fn print_row(id: &str, addr: &str, incarnation: &str, state: &str) {
-    println!("{id:<36}  {addr:<21}  {incarnation:>11}  {state}");
+fn print_row(id: &str, addr: &str, incarnation: &str, tags: &str, state: &str) {
+    // 23 fits two tags of the most common length. more just pushes STATE right
+    println!("{id:<36}  {addr:<21}  {incarnation:>11}  {tags:<23}  {state}");
+}
+
+fn tags_label(tags: &[String]) -> String {
+    if tags.is_empty() {
+        "-".to_string()
+    } else {
+        tags.join(",")
+    }
 }
 
 fn state_label(state: WireMemberState, ready: bool) -> String {

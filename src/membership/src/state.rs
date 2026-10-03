@@ -72,18 +72,20 @@ impl MemberTable {
             }
             Entry::Occupied(mut slot) => {
                 if supersedes(&rumor, slot.get()) {
-                    // only incarnation, state and readiness change. the address
+                    // only incarnation, state, readiness and tags change. the address
                     // stays as first learned: a process never moves (a restart
                     // gets a new id), and a rumor may carry an address that is
                     // worse than ours, like the 0.0.0.0 above
                     //
                     // readiness needs no rank of its own. only the member
                     // changes it, and always with a new incarnation, so two
-                    // rumors at one incarnation never disagree about it
+                    // rumors at one incarnation never disagree about it.
+                    // tags never change at all
                     let member = slot.get_mut();
                     member.incarnation = rumor.incarnation;
                     member.state = rumor.state.into();
                     member.ready = rumor.ready;
+                    member.tags = rumor.tags;
                     MergeOutcome::Updated
                 } else {
                     MergeOutcome::Ignored

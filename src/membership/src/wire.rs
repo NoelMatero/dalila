@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 
@@ -12,7 +13,36 @@ use crate::node::{Incarnation, Member, MemberState, NodeId};
 /// 3: `UdpBody::Leave`.
 /// 4: members say whether their app is ready (`ready`).
 /// 5: every message ends with a tag made from the cluster key (`auth`).
-pub const PROTOCOL_VERSION: u8 = 5;
+/// 6: members say what they run (`tags`).
+pub const PROTOCOL_VERSION: u8 = 6;
+
+/// Most tags one node can have, and the longest one can be.
+///
+/// Small because every rumor carries its member's tags, and up to ten rumors
+/// share a datagram that must stay under 1400 bytes. At these limits a rumor
+/// is at most 113 bytes and the fullest datagram about 1300. At 8 tags of 32
+/// it would be 3500, and gossip would stop working.
+pub const MAX_TAGS: usize = 4;
+pub const MAX_TAG_LEN: usize = 16;
+
+/// Reject tags that break the limits above, or that hold anything besides
+/// letters, digits, `-`, `_` and `.`. Checked where tags are given, at
+/// startup: a peer's tags are trusted like the rest of what it says.
+pub fn check_tags(tags: &[String]) -> Result<()> {
+    if tags.len() > MAX_TAGS {
+        bail!(
+            "{} tags given, a node can have at most {MAX_TAGS}",
+            tags.len()
+        );
+    }
+    for tag in tags {
+        let allowed = |c: char| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.');
+        if tag.is_empty() || tag.len() > MAX_TAG_LEN || !tag.chars().all(allowed) {
+            bail!("tag {tag:?}: needs 1 to {MAX_TAG_LEN} letters, digits, '-', '_' or '.'");
+        }
+    }
+    Ok(())
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WireIdentity {
@@ -26,6 +56,7 @@ pub struct WireIdentity {
     pub addr: SocketAddr,
     pub incarnation: Incarnation,
     pub ready: bool,
+    pub tags: Vec<String>,
 }
 
 impl WireIdentity {
@@ -37,6 +68,7 @@ impl WireIdentity {
             incarnation: self.incarnation,
             state: WireMemberState::Alive,
             ready: self.ready,
+            tags: self.tags,
         }
     }
 }
@@ -55,6 +87,7 @@ pub struct WireMember {
     pub incarnation: Incarnation,
     pub state: WireMemberState,
     pub ready: bool,
+    pub tags: Vec<String>,
 }
 
 impl From<MemberState> for WireMemberState {
@@ -75,6 +108,7 @@ impl WireMember {
             incarnation: member.incarnation,
             state: WireMemberState::from(member.state),
             ready: member.ready,
+            tags: member.tags,
         }
     }
 }
@@ -109,6 +143,7 @@ impl From<WireMember> for Member {
             incarnation: member.incarnation,
             state: MemberState::from(member.state),
             ready: member.ready,
+            tags: member.tags,
         }
     }
 }
