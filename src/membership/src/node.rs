@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 use uuid::Uuid;
 
+use crate::auth::ClusterKey;
 use crate::wire::{WireIdentity, WireMember, WireMemberState};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -104,17 +105,26 @@ pub struct LocalNode {
     /// Same rule as `leaving`: only touched under `incarnation`'s lock. A
     /// change moves the incarnation, and the two have to go out as a pair.
     ready: Arc<AtomicBool>,
+    /// What this node signs every message with, and checks every message
+    /// against. Here because nearly everything that sends or receives already
+    /// has the node at hand.
+    key: ClusterKey,
 }
 
 impl LocalNode {
-    pub fn new(addr: SocketAddr) -> Self {
+    pub fn new(addr: SocketAddr, key: ClusterKey) -> Self {
         Self {
             id: NodeId::random(),
             addr,
             incarnation: Arc::new(Mutex::new(Incarnation::ZERO)),
             leaving: Arc::new(AtomicBool::new(false)),
             ready: Arc::new(AtomicBool::new(true)),
+            key,
         }
+    }
+
+    pub fn key(&self) -> &ClusterKey {
+        &self.key
     }
 
     pub fn incarnation(&self) -> Incarnation {

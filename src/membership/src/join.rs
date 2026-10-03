@@ -7,6 +7,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;
 use tracing::{info, warn};
 
+use crate::auth::ClusterKey;
 use crate::dissemination::{self, GossipQueue};
 use crate::node::LocalNode;
 use crate::state::{MemberTable, MergeOutcome};
@@ -23,22 +24,25 @@ pub(crate) const IO_TIMEOUT: Duration = Duration::from_secs(5);
 pub struct TcpConnection {
     stream: TcpStream,
     buffer: BytesMut,
+    /// Signs every frame written, and checks every frame read.
+    key: ClusterKey,
 }
 
 impl TcpConnection {
-    pub fn new(stream: TcpStream) -> TcpConnection {
+    pub fn new(stream: TcpStream, key: ClusterKey) -> TcpConnection {
         TcpConnection {
             stream,
             buffer: BytesMut::with_capacity(4096),
+            key,
         }
     }
 
-    pub async fn connect(addr: SocketAddr) -> anyhow::Result<TcpConnection> {
+    pub async fn connect(addr: SocketAddr, key: ClusterKey) -> anyhow::Result<TcpConnection> {
         let stream = timeout(IO_TIMEOUT, TcpStream::connect(addr))
             .await
             .with_context(|| format!("timed out connecting to {addr}"))?
             .with_context(|| format!("could not connect to {addr}"))?;
-        Ok(TcpConnection::new(stream))
+        Ok(TcpConnection::new(stream, key))
     }
 
     pub async fn read_frame(&mut self) -> anyhow::Result<Option<TcpBody>> {
@@ -60,6 +64,8 @@ impl TcpConnection {
     pub async fn write_frame(&mut self, body: &TcpBody) -> anyhow::Result<()> {
         // version goes first, so the other side can check it before decoding the body
         let payload = postcard::to_allocvec(&(PROTOCOL_VERSION, body))?;
+        // the tag goes on the end, and covers the version as well
+        let payload = self.key.seal(payload);
 
         let len = u32::try_from(payload.len())?;
 
@@ -104,7 +110,10 @@ impl TcpConnection {
             None => bail!("received an empty frame"),
         }
 
-        let (_version, frame) = postcard::from_bytes::<(u8, TcpBody)>(&payload)?;
+        // before decoding: bytes from someone without the key never reach
+        // the parser at all
+        let payload = self.key.open(&payload)?;
+        let (_version, frame) = postcard::from_bytes::<(u8, TcpBody)>(payload)?;
 
         Ok(Some(frame))
     }
@@ -142,7 +151,7 @@ async fn join_through(
     table: &MemberTable,
     queue: &GossipQueue,
 ) -> anyhow::Result<()> {
-    let mut tcp_connection = TcpConnection::connect(seed).await?;
+    let mut tcp_connection = TcpConnection::connect(seed, local_node.key().clone()).await?;
     tcp_connection.write_frame(body).await?;
 
     // the seed answers on this same connection
@@ -156,13 +165,19 @@ async fn join_through(
             Ok(())
         }
         Some(_) => bail!("seed replied with something other than a join response"),
-        None => bail!("seed closed the connection without replying"),
+        // what a seed with a different key does: it can't trust the request,
+        // and anything it sent back we couldn't trust either
+        None => bail!("seed closed the connection without replying (is --key the same?)"),
     }
 }
 
-// ask a running node for its member table
-pub async fn fetch_members(addr: SocketAddr) -> anyhow::Result<(WireIdentity, Vec<WireMember>)> {
-    let mut tcp_connection = TcpConnection::connect(addr).await?;
+// ask a running node for its member table. needs the cluster's key like
+// anything else that talks to a node: the table is the cluster's addresses
+pub async fn fetch_members(
+    addr: SocketAddr,
+    key: ClusterKey,
+) -> anyhow::Result<(WireIdentity, Vec<WireMember>)> {
+    let mut tcp_connection = TcpConnection::connect(addr, key).await?;
     tcp_connection.write_frame(&TcpBody::MembersRequest).await?;
 
     let reply = timeout(IO_TIMEOUT, tcp_connection.read_frame())
@@ -172,7 +187,7 @@ pub async fn fetch_members(addr: SocketAddr) -> anyhow::Result<(WireIdentity, Ve
     match reply {
         Some(TcpBody::MembersResponse { from, members }) => Ok((from, members)),
         Some(_) => bail!("node replied with something other than a member list"),
-        None => bail!("node closed the connection without replying"),
+        None => bail!("node closed the connection without replying (is --key the same?)"),
     }
 }
 
@@ -200,7 +215,7 @@ pub async fn start_tcp_accept_loop(
         let tmp_node = node.clone();
 
         tokio::spawn(async move {
-            let mut tcp_connection = TcpConnection::new(stream);
+            let mut tcp_connection = TcpConnection::new(stream, tmp_node.key().clone());
 
             // one reply per request, until the peer hangs up (Ok(None)).
             // an error ends this connection only, never the accept loop
