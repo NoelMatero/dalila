@@ -1,21 +1,31 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
+use membership::auth::ClusterKey;
 use membership::join::fetch_members;
 use membership::wire::WireMemberState;
 
 pub struct Config {
     pub addr: SocketAddr,
+    pub key: Option<String>,
 }
 
 impl From<crate::cli::MembersArgs> for Config {
     fn from(args: crate::cli::MembersArgs) -> Self {
-        Self { addr: args.addr }
+        Self {
+            addr: args.addr,
+            key: args.key,
+        }
     }
 }
 
 pub async fn execute(cfg: Config) -> Result<()> {
-    let (from, mut members) = fetch_members(cfg.addr).await?;
+    // no key: only a node started without one will answer
+    let key = match cfg.key {
+        Some(secret) => ClusterKey::from_secret(&secret)?,
+        None => ClusterKey::none(),
+    };
+    let (from, mut members) = fetch_members(cfg.addr, key).await?;
     members.sort_by_key(|m| m.addr);
 
     print_row("ID", "ADDRESS", "INCARNATION", "STATE");

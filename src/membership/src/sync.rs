@@ -60,7 +60,7 @@ async fn sync_with(
     table: &MemberTable,
     queue: &GossipQueue,
 ) -> Result<()> {
-    let mut tcp_connection = TcpConnection::connect(partner.addr).await?;
+    let mut tcp_connection = TcpConnection::connect(partner.addr, node.key().clone()).await?;
 
     tcp_connection
         .write_frame(&TcpBody::SyncRequest {

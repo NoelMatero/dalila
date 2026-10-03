@@ -12,6 +12,7 @@ use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
 use crate::{
+    auth::ClusterKey,
     dissemination::{self, GossipQueue},
     node::{LocalNode, Member, MemberState, NodeId},
     state::{MemberTable, MergeOutcome},
@@ -80,16 +81,16 @@ enum UdpBody {
 }
 
 impl UdpBody {
-    /// The payload is `(PROTOCOL_VERSION, UdpBody)`, the same shape a TCP
-    /// frame carries. A datagram is its own frame, so there is no length
-    /// prefix in front of it.
-    fn encode_frame(&self) -> anyhow::Result<Vec<u8>> {
+    /// The payload is `(PROTOCOL_VERSION, UdpBody)` and its tag, the same
+    /// shape a TCP frame carries. A datagram is its own frame, so there is no
+    /// length prefix in front of it.
+    fn encode_frame(&self, key: &ClusterKey) -> anyhow::Result<Vec<u8>> {
         let payload = postcard::to_allocvec(&(PROTOCOL_VERSION, self))?;
-        Ok(payload)
+        Ok(key.seal(payload))
     }
 }
 
-fn decode_frame(payload: &[u8]) -> Result<UdpBody> {
+fn decode_frame(key: &ClusterKey, payload: &[u8]) -> Result<UdpBody> {
     // a peer on another version may lay the body out differently, or name a
     // variant we have no arm for. check the version before decoding the rest,
     // so a mismatch is reported as a mismatch instead of as a corrupt packet
@@ -99,6 +100,8 @@ fn decode_frame(payload: &[u8]) -> Result<UdpBody> {
         None => bail!("received an empty datagram"),
     }
 
+    // before decoding, as for TCP: a forged datagram is never parsed
+    let payload = key.open(payload)?;
     let (_version, frame) = postcard::from_bytes::<(u8, UdpBody)>(payload)?;
     Ok(frame)
 }
@@ -182,7 +185,7 @@ pub async fn ping(
         from: node.identity(),
         gossip: queue.take(),
     };
-    if let Err(err) = send_udp(socket, addr, &body).await {
+    if let Err(err) = send_udp(socket, node.key(), addr, &body).await {
         warn!(%addr, "could not send ping: {err:#}");
         pending.forget(seq);
         return false;
@@ -220,7 +223,7 @@ pub async fn ping_req(
             gossip: queue.take(),
         };
 
-        match send_udp(socket, relay.addr, &body).await {
+        match send_udp(socket, node.key(), relay.addr, &body).await {
             Ok(()) => sent += 1,
             Err(err) => warn!(addr = %relay.addr, "could not send ping-req: {err:#}"),
         }
@@ -249,7 +252,7 @@ async fn handle_ping(
         from: node.identity(),
         gossip: queue.take(),
     };
-    send_udp(socket, addr, &ack).await
+    send_udp(socket, node.key(), addr, &ack).await
 }
 
 /// Probe `target` on someone else's behalf, and report back only if it answers.
@@ -290,7 +293,7 @@ async fn handle_ping_req(
         target,
         gossip: queue.take(),
     };
-    if let Err(err) = send_udp(socket, asker, &body).await {
+    if let Err(err) = send_udp(socket, node.key(), asker, &body).await {
         warn!(addr = %asker, "could not report a relayed probe: {err:#}");
     }
 }
@@ -310,7 +313,7 @@ pub async fn announce_leave(socket: &UdpSocket, node: &LocalNode, table: &Member
 
     let mut told = 0;
     for member in &members {
-        match send_udp(socket, member.addr, &body).await {
+        match send_udp(socket, node.key(), member.addr, &body).await {
             Ok(()) => told += 1,
             Err(err) => warn!(addr = %member.addr, "could not send leave: {err:#}"),
         }
@@ -366,8 +369,13 @@ fn handle_gossip(
     }
 }
 
-async fn send_udp(socket: &UdpSocket, target: SocketAddr, body: &UdpBody) -> Result<()> {
-    let payload = body.encode_frame()?;
+async fn send_udp(
+    socket: &UdpSocket,
+    key: &ClusterKey,
+    target: SocketAddr,
+    body: &UdpBody,
+) -> Result<()> {
+    let payload = body.encode_frame(key)?;
     socket.send_to(&payload, target).await?;
     Ok(())
 }
@@ -394,10 +402,11 @@ pub async fn start_udp_loop(
         };
 
         // only the bytes that arrived, not the whole buffer
-        let frame = match decode_frame(&buf[..len]) {
+        let frame = match decode_frame(node.key(), &buf[..len]) {
             Ok(frame) => frame,
             Err(err) => {
-                // malformed, or from a peer speaking a version we don't
+                // malformed, from a peer speaking a version we don't, or from
+                // someone without the key
                 warn!(%addr, "ignoring datagram: {err:#}");
                 continue;
             }

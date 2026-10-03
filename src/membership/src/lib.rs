@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod join;
 pub mod node;
 pub mod wire;

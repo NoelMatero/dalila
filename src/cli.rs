@@ -35,6 +35,22 @@ pub struct StartArgs {
     #[arg(long, value_name = "HOST:PORT")]
     pub join: Vec<SocketAddr>,
 
+    /// The secret every node in the cluster shares. Every message between
+    /// nodes is signed with it, and a message without the right signature is
+    /// dropped. Without it, anyone who can reach this node can join the
+    /// cluster. Make one with `openssl rand -hex 32`, and prefer the env var:
+    /// a flag shows up in `ps`.
+    //
+    // a plain string, checked later by `ClusterKey::from_secret`. if clap
+    // checked it, its error would print the rejected secret
+    #[arg(
+        long,
+        env = "DALILA_KEY",
+        hide_env_values = true,
+        value_name = "SECRET"
+    )]
+    pub key: Option<String>,
+
     /// Accept client connections here and forward each to a live member.
     #[arg(long, value_name = "HOST:PORT", requires = "backend_port")]
     pub proxy: Option<SocketAddr>,
@@ -63,6 +79,15 @@ pub struct StartArgs {
 pub struct MembersArgs {
     #[arg(long, default_value = "127.0.0.1:7946")]
     pub addr: SocketAddr,
+
+    /// The cluster's secret, the same one the node was started with.
+    #[arg(
+        long,
+        env = "DALILA_KEY",
+        hide_env_values = true,
+        value_name = "SECRET"
+    )]
+    pub key: Option<String>,
 }
 
 pub fn parse() -> Cli {

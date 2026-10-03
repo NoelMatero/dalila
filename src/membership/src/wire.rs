@@ -11,7 +11,8 @@ use crate::node::{Incarnation, Member, MemberState, NodeId};
 /// 2: `WireIdentity` carries a whole address instead of just a port.
 /// 3: `UdpBody::Leave`.
 /// 4: members say whether their app is ready (`ready`).
-pub const PROTOCOL_VERSION: u8 = 4;
+/// 5: every message ends with a tag made from the cluster key (`auth`).
+pub const PROTOCOL_VERSION: u8 = 5;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WireIdentity {
@@ -112,8 +113,9 @@ impl From<WireMember> for Member {
     }
 }
 
-/// A TCP frame's payload is `(PROTOCOL_VERSION, TcpBody)`. The version is the
-/// first byte, so it can be checked before the body is decoded.
+/// A TCP frame's payload is `(PROTOCOL_VERSION, TcpBody)` followed by its tag.
+/// The version is the first byte, so it can be checked before anything else;
+/// the tag covers the version and the body both.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TcpBody {
     JoinRequest {

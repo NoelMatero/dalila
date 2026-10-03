@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::{Context, bail};
+use membership::auth::ClusterKey;
 use membership::detector::start_udp_detector;
 use membership::dissemination::GossipQueue;
 use membership::join::{join, start_tcp_accept_loop};
@@ -21,6 +22,8 @@ pub struct Config {
     pub bind: SocketAddr,
     pub advertise: Option<SocketAddr>,
     pub seeds: Vec<SocketAddr>,
+    /// The `--key` secret. `None`: nothing is really checked.
+    pub key: Option<String>,
     /// Where this node's own app listens, to check it. `None`: not checked.
     pub backend_port: Option<u16>,
     pub proxy: Option<proxy::Config>,
@@ -33,6 +36,7 @@ impl From<crate::cli::StartArgs> for Config {
             bind: args.bind,
             advertise: args.advertise,
             seeds: args.join,
+            key: args.key,
             backend_port: args.backend_port,
             // clap won't take --proxy without --backend-port, so this is only
             // None when there's no --proxy
@@ -72,6 +76,19 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
             ),
         }
     }
+
+    // also checked before binding
+    let key = match cfg.key {
+        Some(secret) => ClusterKey::from_secret(&secret)?,
+        None => {
+            // allowed, so trying dalila out stays one command. but on a
+            // network you don't control, this is the warning that matters
+            warn!(
+                "no --key: anyone who can reach this node can join the cluster and change its member table"
+            );
+            ClusterKey::none()
+        }
+    };
 
     // bind before joining: once the seed has recorded us, it can hand our
     // address to the next node to join, which must find us listening
@@ -113,7 +130,7 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
 
     // without --advertise, the bound address. that has a specific IP (checked
     // above), and the real port even if --bind asked for port 0
-    let node = LocalNode::new(cfg.advertise.unwrap_or(bound));
+    let node = LocalNode::new(cfg.advertise.unwrap_or(bound), key);
     let table = MemberTable::new();
     let queue = GossipQueue::new();
     let pending = PendingAcks::new();
