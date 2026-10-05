@@ -69,10 +69,12 @@ fn state_label(state: WireMemberState, ready: bool) -> String {
         WireMemberState::Suspect => "suspect",
         WireMemberState::Dead => "dead",
     };
-    // only worth saying when it's news: nearly every member is ready
+    // only worth saying when it's news: nearly every member is ready. not
+    // ready is its app being down, or it being drained; its own `GET /node`
+    // says which
     if ready {
         state.to_string()
     } else {
-        format!("{state}, app down")
+        format!("{state}, not ready")
     }
 }

@@ -15,9 +15,9 @@ use tokio::net::{TcpListener, UdpSocket};
 use tokio::signal::unix::{SignalKind, signal};
 use tracing::{info, warn};
 
-use crate::api::{self, start_api};
+use crate::api::{self, check_token, start_api};
 use crate::health::start_health_check;
-use crate::proxy::{self, start_proxy};
+use crate::proxy::{self, Proxies};
 
 pub struct Config {
     pub bind: SocketAddr,
@@ -41,24 +41,16 @@ impl From<crate::cli::StartArgs> for Config {
             key: args.key,
             tags: args.tags,
             backend_port: args.backend_port,
-            // clap won't take --proxy without --backend-port, so this is only
-            // None when there's no --proxy
-            proxy: args
-                .proxy
-                .zip(args.backend_port)
-                .map(|(listen, backend_port)| proxy::Config {
-                    listen,
-                    backend_port,
-                    to: args.proxy_to,
-                }),
-            // same: --api needs --backend-port
-            api: args
-                .api
-                .zip(args.backend_port)
-                .map(|(listen, backend_port)| api::Config {
-                    listen,
-                    backend_port,
-                }),
+            // --proxy and --api both need --backend-port (clap checks), and
+            // take it from `Proxies`, which every proxy shares
+            proxy: args.proxy.map(|listen| proxy::Config {
+                listen,
+                to: args.proxy_to,
+            }),
+            api: args.api.map(|listen| api::Config {
+                listen,
+                token: args.api_token,
+            }),
         }
     }
 }
@@ -85,6 +77,9 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     // limits: it only has to match some member's tag, and if it can't, the
     // proxy finds no backends and says so on every connection
     check_tags(&cfg.tags)?;
+    if let Some(token) = cfg.api.as_ref().and_then(|api| api.token.as_deref()) {
+        check_token(token)?;
+    }
 
     // also checked before binding
     let key = match cfg.key {
@@ -175,40 +170,38 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
         join(cfg.seeds, &node, &table, &queue).await?;
     }
 
+    // every proxy on this node, from --proxy or the API. only with
+    // --backend-port, which both of those need
+    let proxies = cfg
+        .backend_port
+        .map(|backend_port| Proxies::new(node.clone(), table.clone(), backend_port));
+
     // these start after the join, so the first round already has the cluster
     // in it. for the proxy, that means the first client isn't stuck with just us
-    let proxy = match (proxy_listener, &cfg.proxy) {
-        (Some(listener), Some(proxy)) => {
-            info!(
-                addr = %listener.local_addr()?,
-                backend_port = proxy.backend_port,
-                to = proxy.to.as_deref().unwrap_or("any member"),
-                "proxying"
-            );
-            Some(tokio::spawn(start_proxy(
-                listener,
-                node.clone(),
-                table.clone(),
-                proxy.backend_port,
-                proxy.to.clone(),
-            )))
-        }
-        _ => None,
-    };
-    let api = match (api_listener, &cfg.api) {
-        (Some(listener), Some(api)) => {
+    if let (Some(listener), Some(proxy), Some(proxies)) = (proxy_listener, &cfg.proxy, &proxies) {
+        proxies.start(listener, proxy.to.clone())?;
+    }
+    let api = match (api_listener, &cfg.api, &proxies) {
+        (Some(listener), Some(api), Some(proxies)) => {
             let addr = listener.local_addr()?;
-            info!(%addr, "api listening");
+            info!(%addr, changes = api.token.is_some(), "api listening");
             if !addr.ip().is_loopback() {
                 // allowed, because a trusted private network is a real use.
-                // but there's no auth yet, so say so
-                warn!(%addr, "the api has no auth and is reachable from other machines");
+                // but reads are open, and a token crosses the network in the
+                // clear (plain HTTP), so say so
+                warn!(
+                    %addr,
+                    "the api is reachable from other machines over plain HTTP: \
+                     reads need no token, and a token sent to it can be read off the network"
+                );
             }
             Some(tokio::spawn(start_api(
                 listener,
                 node.clone(),
                 table.clone(),
-                api.backend_port,
+                queue.clone(),
+                proxies.clone(),
+                api.token.clone(),
             )))
         }
         _ => None,
@@ -234,8 +227,8 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     udp_loop.abort();
     detector.abort();
     sync_loop.abort();
-    if let Some(proxy) = proxy {
-        proxy.abort();
+    if let Some(proxies) = &proxies {
+        proxies.stop_all();
     }
     if let Some(api) = api {
         api.abort();

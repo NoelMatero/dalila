@@ -36,7 +36,7 @@ pub async fn start_health_check(
         ticks.tick().await;
 
         let ready = answers(app).await;
-        if !node.set_ready(ready) {
+        if !node.set_app_up(ready) {
             continue;
         }
 

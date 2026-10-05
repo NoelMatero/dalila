@@ -1,6 +1,5 @@
 use std::fmt;
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
@@ -86,6 +85,44 @@ impl Member {
     }
 }
 
+/// This node's own state: everything it says about itself, and whether it
+/// has stopped saying it. One lock for all of it, so a rumor never pairs a
+/// new incarnation with an old field, and a change can't slip in between
+/// `leave` and the death it announces.
+#[derive(Debug)]
+struct Own {
+    incarnation: Incarnation,
+    /// Set once this node is shutting down on purpose. From then on it lets
+    /// rumors of its death stand instead of refuting them, and changes
+    /// nothing else about itself.
+    leaving: bool,
+    /// Whether this node's own app answered its last check. Starts true, and
+    /// stays true on a node that doesn't check.
+    app_up: bool,
+    /// Taken out of rotation on purpose, through the control API. The app
+    /// may be fine; this node just shouldn't be sent work for now.
+    drained: bool,
+    /// What this node runs, like `web`. Starts from `--tag`.
+    tags: Vec<String>,
+}
+
+impl Own {
+    /// What peers are told about whether to send us work.
+    fn ready(&self) -> bool {
+        self.app_up && !self.drained
+    }
+}
+
+/// A copy of this node's own state, for the control API to show.
+#[derive(Debug, Clone)]
+pub struct Status {
+    pub incarnation: Incarnation,
+    pub ready: bool,
+    pub app_up: bool,
+    pub drained: bool,
+    pub tags: Vec<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct LocalNode {
     pub id: NodeId,
@@ -95,28 +132,11 @@ pub struct LocalNode {
     pub addr: SocketAddr,
     /// Shared by every clone, like the member table. When one task refutes a
     /// rumor, every other task must advertise the new number from then on.
-    incarnation: Arc<Mutex<Incarnation>>,
-    /// Set once this node is shutting down on purpose. From then on it lets
-    /// rumors of its death stand instead of refuting them.
-    ///
-    /// Only read or written while holding `incarnation`'s lock, so a refute
-    /// is either finished before `leave` or never happens. An atomic only
-    /// because it lives outside that mutex.
-    leaving: Arc<AtomicBool>,
-    /// Whether this node's own app answered its last check. Starts true, and
-    /// stays true on a node that doesn't check.
-    ///
-    /// Same rule as `leaving`: only touched under `incarnation`'s lock. A
-    /// change moves the incarnation, and the two have to go out as a pair.
-    ready: Arc<AtomicBool>,
+    own: Arc<Mutex<Own>>,
     /// What this node signs every message with, and checks every message
     /// against. Here because nearly everything that sends or receives already
     /// has the node at hand.
     key: ClusterKey,
-    /// Set at startup and never changed, so unlike `ready` it needs no lock
-    /// and no incarnation of its own: every rumor about us carries the same
-    /// tags.
-    tags: Arc<[String]>,
 }
 
 impl LocalNode {
@@ -124,16 +144,15 @@ impl LocalNode {
         Self {
             id: NodeId::random(),
             addr,
-            incarnation: Arc::new(Mutex::new(Incarnation::ZERO)),
-            leaving: Arc::new(AtomicBool::new(false)),
-            ready: Arc::new(AtomicBool::new(true)),
+            own: Arc::new(Mutex::new(Own {
+                incarnation: Incarnation::ZERO,
+                leaving: false,
+                app_up: true,
+                drained: false,
+                tags,
+            })),
             key,
-            tags: tags.into(),
         }
-    }
-
-    pub fn has_tag(&self, tag: &str) -> bool {
-        self.tags.iter().any(|t| t == tag)
     }
 
     pub fn key(&self) -> &ClusterKey {
@@ -141,30 +160,37 @@ impl LocalNode {
     }
 
     pub fn incarnation(&self) -> Incarnation {
-        *self.incarnation.lock().unwrap()
+        self.own.lock().unwrap().incarnation
     }
 
     pub fn is_ready(&self) -> bool {
-        self.current().1
+        self.own.lock().unwrap().ready()
     }
 
-    /// Incarnation and readiness, read together. Read separately, a change
-    /// could land in between, and we'd send the new number with the old
-    /// readiness. Peers would keep that until our next change.
-    fn current(&self) -> (Incarnation, bool) {
-        let incarnation = self.incarnation.lock().unwrap();
-        (*incarnation, self.ready.load(Ordering::Relaxed))
+    pub fn has_tag(&self, tag: &str) -> bool {
+        self.own.lock().unwrap().tags.iter().any(|t| t == tag)
+    }
+
+    pub fn status(&self) -> Status {
+        let own = self.own.lock().unwrap();
+        Status {
+            incarnation: own.incarnation,
+            ready: own.ready(),
+            app_up: own.app_up,
+            drained: own.drained,
+            tags: own.tags.clone(),
+        }
     }
 
     /// How this node introduces itself to a peer.
     pub fn identity(&self) -> WireIdentity {
-        let (incarnation, ready) = self.current();
+        let own = self.own.lock().unwrap();
         WireIdentity {
             id: self.id,
             addr: self.addr,
-            incarnation,
-            ready,
-            tags: self.tags.to_vec(),
+            incarnation: own.incarnation,
+            ready: own.ready(),
+            tags: own.tags.clone(),
         }
     }
 
@@ -173,55 +199,76 @@ impl LocalNode {
     /// to advertise from now on, or `None` if this node is leaving and the
     /// rumor should stand.
     pub fn refute(&self, rumored: Incarnation) -> Option<Incarnation> {
-        let mut current = self.incarnation.lock().unwrap();
-        if self.leaving.load(Ordering::Relaxed) {
+        let mut own = self.own.lock().unwrap();
+        if own.leaving {
             return None;
         }
         // a rumor older than our current incarnation is already beaten by it
-        if rumored >= *current {
-            *current = Incarnation::superseding(rumored);
+        if rumored >= own.incarnation {
+            own.incarnation = Incarnation::superseding(rumored);
         }
-        Some(*current)
+        Some(own.incarnation)
     }
 
     /// Stop defending this node's liveness. Its incarnation is final from
     /// here on, so a "dead" at that incarnation outranks every "alive" it
     /// ever sent.
     pub fn leave(&self) {
-        // under the lock: a refute already past its check finishes first, and
-        // the number we announce our death at can't move after this
-        let _current = self.incarnation.lock().unwrap();
-        self.leaving.store(true, Ordering::Relaxed);
+        // under the lock: a refute or change already past its check finishes
+        // first, and the number we announce our death at can't move after this
+        self.own.lock().unwrap().leaving = true;
     }
 
     /// Record whether this node's app is answering. True if that changed, in
     /// which case the caller should gossip `alive_rumor`.
+    pub fn set_app_up(&self, app_up: bool) -> bool {
+        self.change(|own| own.app_up = app_up)
+    }
+
+    /// Take this node out of rotation, or put it back. True if that changed.
+    pub fn set_drained(&self, drained: bool) -> bool {
+        self.change(|own| own.drained = drained)
+    }
+
+    /// Replace this node's tags. True if they changed. Check them with
+    /// `wire::check_tags` first: every rumor about us carries them.
+    pub fn set_tags(&self, tags: Vec<String>) -> bool {
+        self.change(|own| own.tags = tags)
+    }
+
+    /// Apply `edit` to our own state, and if it changed anything, move the
+    /// incarnation up one. True if it did, in which case the caller should
+    /// gossip `alive_rumor`.
     ///
-    /// A change moves the incarnation up one. Peers only take news about us
+    /// The bump is what makes the change news: peers only take news about us
     /// at a higher incarnation than they hold, and only we can move ours, so
     /// this works the same way as a refute.
-    pub fn set_ready(&self, ready: bool) -> bool {
-        let mut current = self.incarnation.lock().unwrap();
+    fn change(&self, edit: impl FnOnce(&mut Own)) -> bool {
+        let mut own = self.own.lock().unwrap();
         // leaving: the incarnation is final (see `leave`), and nobody is
         // sending us work any more anyway
-        if self.leaving.load(Ordering::Relaxed) || self.ready.load(Ordering::Relaxed) == ready {
+        if own.leaving {
             return false;
         }
-        *current = Incarnation::superseding(*current);
-        self.ready.store(ready, Ordering::Relaxed);
+        let before = (own.app_up, own.drained, own.tags.clone());
+        edit(&mut own);
+        if (own.app_up, own.drained, own.tags.clone()) == before {
+            return false;
+        }
+        own.incarnation = Incarnation::superseding(own.incarnation);
         true
     }
 
     /// "This node is alive", as a rumor to gossip.
     pub fn alive_rumor(&self) -> WireMember {
-        let (incarnation, ready) = self.current();
+        let own = self.own.lock().unwrap();
         WireMember {
             id: self.id,
             addr: self.addr,
-            incarnation,
+            incarnation: own.incarnation,
             state: WireMemberState::Alive,
-            ready,
-            tags: self.tags.to_vec(),
+            ready: own.ready(),
+            tags: own.tags.clone(),
         }
     }
 }

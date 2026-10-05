@@ -27,7 +27,8 @@ pub const MAX_TAG_LEN: usize = 16;
 
 /// Reject tags that break the limits above, or that hold anything besides
 /// letters, digits, `-`, `_` and `.`. Checked where tags are given, at
-/// startup: a peer's tags are trusted like the rest of what it says.
+/// startup and in the control API: a peer's tags are trusted like the rest
+/// of what it says.
 pub fn check_tags(tags: &[String]) -> Result<()> {
     if tags.len() > MAX_TAGS {
         bail!(
