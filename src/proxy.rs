@@ -1,14 +1,18 @@
+use std::collections::HashMap;
+use std::io;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use membership::node::LocalNode;
 use membership::state::MemberTable;
+use serde::Serialize;
 use tokio::io::copy_bidirectional;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 /// How long one backend gets to accept a connection before we try the next.
 ///
@@ -19,11 +23,117 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(1);
 pub struct Config {
     /// Where clients connect.
     pub listen: SocketAddr,
-    /// The port every member serves the proxied service on. A member's own
-    /// address is its gossip port, so this replaces it and the IP is kept.
-    pub backend_port: u16,
     /// Only members with this tag. `None`: any member.
     pub to: Option<String>,
+}
+
+/// Every proxy running on this node, by the address it listens on: the one
+/// from `--proxy`, and any the control API started. Both kinds are listed and
+/// stopped the same way. Clones share the same set.
+#[derive(Clone)]
+pub struct Proxies {
+    running: Arc<Mutex<HashMap<SocketAddr, Running>>>,
+    node: LocalNode,
+    table: MemberTable,
+    /// The port every member serves the proxied service on. A member's own
+    /// address is its gossip port, so this replaces it and the IP is kept.
+    backend_port: u16,
+}
+
+struct Running {
+    to: Option<String>,
+    task: JoinHandle<()>,
+}
+
+/// One running proxy, as the control API shows it.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProxyInfo {
+    pub listen: SocketAddr,
+    pub to: Option<String>,
+}
+
+impl Proxies {
+    pub fn new(node: LocalNode, table: MemberTable, backend_port: u16) -> Self {
+        Self {
+            running: Arc::default(),
+            node,
+            table,
+            backend_port,
+        }
+    }
+
+    pub fn backend_port(&self) -> u16 {
+        self.backend_port
+    }
+
+    /// Start proxying on `listener`, which the caller has already bound: a
+    /// port that's taken is the caller's error to report, before anything
+    /// starts. Returns the address it listens on.
+    ///
+    /// No check for a proxy already on that address: it holds the port, so
+    /// the bind would have failed.
+    pub fn start(&self, listener: TcpListener, to: Option<String>) -> io::Result<SocketAddr> {
+        let listen = listener.local_addr()?;
+        info!(
+            addr = %listen,
+            backend_port = self.backend_port,
+            to = to.as_deref().unwrap_or("any member"),
+            "proxying"
+        );
+
+        let task = tokio::spawn(start_proxy(
+            listener,
+            self.node.clone(),
+            self.table.clone(),
+            self.backend_port,
+            to.clone(),
+        ));
+        self.running
+            .lock()
+            .unwrap()
+            .insert(listen, Running { to, task });
+        Ok(listen)
+    }
+
+    /// Stop the proxy on `listen`. False if there wasn't one.
+    ///
+    /// Connections it already forwarded carry on until either side hangs up:
+    /// each is its own task, and only the accept loop is stopped. Returns
+    /// once the port is free, so it can be used again straight away.
+    pub async fn stop(&self, listen: &SocketAddr) -> bool {
+        // out of the map first, so the lock isn't held across the await
+        let Some(running) = self.running.lock().unwrap().remove(listen) else {
+            return false;
+        };
+        running.task.abort();
+        // an aborted task drops its listener when it finishes, which is a
+        // moment later. Err here is the abort itself, which is what we asked for
+        let _ = running.task.await;
+        info!(addr = %listen, "stopped proxying");
+        true
+    }
+
+    pub fn list(&self) -> Vec<ProxyInfo> {
+        let mut proxies: Vec<ProxyInfo> = self
+            .running
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(listen, running)| ProxyInfo {
+                listen: *listen,
+                to: running.to.clone(),
+            })
+            .collect();
+        proxies.sort_by_key(|proxy| proxy.listen);
+        proxies
+    }
+
+    /// At shutdown. Doesn't wait: the process is about to exit anyway.
+    pub fn stop_all(&self) {
+        for (_, running) in self.running.lock().unwrap().drain() {
+            running.task.abort();
+        }
+    }
 }
 
 /// Accept client connections and hand each one to a live member.

@@ -77,10 +77,9 @@ impl MemberTable {
                     // gets a new id), and a rumor may carry an address that is
                     // worse than ours, like the 0.0.0.0 above
                     //
-                    // readiness needs no rank of its own. only the member
-                    // changes it, and always with a new incarnation, so two
-                    // rumors at one incarnation never disagree about it.
-                    // tags never change at all
+                    // readiness and tags need no rank of their own. only the
+                    // member changes them, and always with a new incarnation,
+                    // so two rumors at one incarnation never disagree
                     let member = slot.get_mut();
                     member.incarnation = rumor.incarnation;
                     member.state = rumor.state.into();

@@ -72,10 +72,10 @@ pub struct StartArgs {
     #[arg(long, value_name = "PORT")]
     pub backend_port: Option<u16>,
 
-    /// Answer `GET /backends` here, with every member that can take work, for
-    /// a proxy other than the built-in one. `--api` on its own means
-    /// 127.0.0.1:7900. There's no auth, so keep it where only this machine
-    /// can reach it.
+    /// Answer HTTP here: `GET /backends` for a proxy other than the built-in
+    /// one, `GET /node` for this node's state, and with --api-token, changes
+    /// to this node while it runs. `--api` on its own means 127.0.0.1:7900.
+    /// Reads need no token, so keep it where only this machine can reach it.
     #[arg(
         long,
         value_name = "HOST:PORT",
@@ -84,6 +84,20 @@ pub struct StartArgs {
         requires = "backend_port"
     )]
     pub api: Option<SocketAddr>,
+
+    /// What a change through the API has to come with, as
+    /// `Authorization: Bearer <token>`: tags, drain, proxies. Without it,
+    /// the API only answers reads. Prefer the env var, as with --key.
+    //
+    // checked later by `api::check_token`, for the same reason as --key
+    #[arg(
+        long,
+        env = "DALILA_API_TOKEN",
+        hide_env_values = true,
+        value_name = "TOKEN",
+        requires = "api"
+    )]
+    pub api_token: Option<String>,
 }
 
 #[derive(Debug, Args)]
