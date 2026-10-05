@@ -22,6 +22,8 @@ pub struct Config {
     /// The port every member serves the proxied service on. A member's own
     /// address is its gossip port, so this replaces it and the IP is kept.
     pub backend_port: u16,
+    /// Only members with this tag. `None`: any member.
+    pub to: Option<String>,
 }
 
 /// Accept client connections and hand each one to a live member.
@@ -34,6 +36,7 @@ pub async fn start_proxy(
     node: LocalNode,
     table: MemberTable,
     backend_port: u16,
+    to: Option<String>,
 ) {
     // where the round-robin is up to. shared by every connection, so two
     // clients arriving at once start at different backends
@@ -55,9 +58,19 @@ pub async fn start_proxy(
         let node = node.clone();
         let table = table.clone();
         let next = next.clone();
+        let to = to.clone();
 
         tokio::spawn(async move {
-            forward(client, client_addr, &node, &table, backend_port, &next).await;
+            forward(
+                client,
+                client_addr,
+                &node,
+                &table,
+                backend_port,
+                to.as_deref(),
+                &next,
+            )
+            .await;
         });
     }
 }
@@ -70,11 +83,12 @@ async fn forward(
     node: &LocalNode,
     table: &MemberTable,
     backend_port: u16,
+    to: Option<&str>,
     next: &AtomicUsize,
 ) {
     // read fresh for every connection, so a member that died a moment ago is
     // already gone from the list
-    let backends = backends(node, table, backend_port);
+    let backends = backends(node, table, backend_port, to);
     let start = next.fetch_add(1, Ordering::Relaxed);
 
     // every backend gets one try, starting where the last connection left off.
@@ -111,21 +125,27 @@ async fn forward(
 }
 
 /// Where the service is on every member that can take work, this node
-/// included if it can too.
+/// included if it can too. With `tag`, only members that carry it.
 ///
 /// Sorted, so the round-robin walks the same order from one connection to the
 /// next. `HashMap` order would be different every time the table changed.
-pub fn backends(node: &LocalNode, table: &MemberTable, backend_port: u16) -> Vec<SocketAddr> {
+pub fn backends(
+    node: &LocalNode,
+    table: &MemberTable,
+    backend_port: u16,
+    tag: Option<&str>,
+) -> Vec<SocketAddr> {
     let mut addrs: Vec<SocketAddr> = table
         .ready()
         .iter()
+        .filter(|member| tag.is_none_or(|tag| member.tags.iter().any(|t| t == tag)))
         .map(|member| SocketAddr::new(member.addr.ip(), backend_port))
         .collect();
 
     // we're not in our own table, but our own service is as good a backend as
     // anyone's. same rule as for the others: our advertised IP, the app's
-    // port, and only while its check passes
-    if node.is_ready() {
+    // port, and only while its check passes and it has the tag
+    if node.is_ready() && tag.is_none_or(|tag| node.has_tag(tag)) {
         addrs.push(SocketAddr::new(node.addr.ip(), backend_port));
     }
 

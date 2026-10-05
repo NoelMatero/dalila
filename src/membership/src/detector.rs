@@ -200,6 +200,7 @@ fn mark(
         state,
         // a suspicion is about the agent, not its app. keep what it last said
         ready: member.ready,
+        tags: member.tags.clone(),
     };
     dissemination::apply(node, table, queue, rumor) == MergeOutcome::Updated
 }

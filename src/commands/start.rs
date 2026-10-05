@@ -10,6 +10,7 @@ use membership::node::LocalNode;
 use membership::state::MemberTable;
 use membership::sync::start_sync_loop;
 use membership::udp::{PendingAcks, announce_leave, start_udp_loop};
+use membership::wire::check_tags;
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::signal::unix::{SignalKind, signal};
 use tracing::{info, warn};
@@ -24,6 +25,7 @@ pub struct Config {
     pub seeds: Vec<SocketAddr>,
     /// The `--key` secret. `None`: nothing is really checked.
     pub key: Option<String>,
+    pub tags: Vec<String>,
     /// Where this node's own app listens, to check it. `None`: not checked.
     pub backend_port: Option<u16>,
     pub proxy: Option<proxy::Config>,
@@ -37,6 +39,7 @@ impl From<crate::cli::StartArgs> for Config {
             advertise: args.advertise,
             seeds: args.join,
             key: args.key,
+            tags: args.tags,
             backend_port: args.backend_port,
             // clap won't take --proxy without --backend-port, so this is only
             // None when there's no --proxy
@@ -46,6 +49,7 @@ impl From<crate::cli::StartArgs> for Config {
                 .map(|(listen, backend_port)| proxy::Config {
                     listen,
                     backend_port,
+                    to: args.proxy_to,
                 }),
             // same: --api needs --backend-port
             api: args
@@ -76,6 +80,11 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
             ),
         }
     }
+
+    // checked before binding too. --proxy-to isn't checked against the
+    // limits: it only has to match some member's tag, and if it can't, the
+    // proxy finds no backends and says so on every connection
+    check_tags(&cfg.tags)?;
 
     // also checked before binding
     let key = match cfg.key {
@@ -130,7 +139,7 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
 
     // without --advertise, the bound address. that has a specific IP (checked
     // above), and the real port even if --bind asked for port 0
-    let node = LocalNode::new(cfg.advertise.unwrap_or(bound), key);
+    let node = LocalNode::new(cfg.advertise.unwrap_or(bound), key, cfg.tags);
     let table = MemberTable::new();
     let queue = GossipQueue::new();
     let pending = PendingAcks::new();
@@ -170,12 +179,18 @@ pub async fn execute(cfg: Config) -> anyhow::Result<()> {
     // in it. for the proxy, that means the first client isn't stuck with just us
     let proxy = match (proxy_listener, &cfg.proxy) {
         (Some(listener), Some(proxy)) => {
-            info!(addr = %listener.local_addr()?, backend_port = proxy.backend_port, "proxying");
+            info!(
+                addr = %listener.local_addr()?,
+                backend_port = proxy.backend_port,
+                to = proxy.to.as_deref().unwrap_or("any member"),
+                "proxying"
+            );
             Some(tokio::spawn(start_proxy(
                 listener,
                 node.clone(),
                 table.clone(),
                 proxy.backend_port,
+                proxy.to.clone(),
             )))
         }
         _ => None,

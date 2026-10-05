@@ -1,11 +1,11 @@
 use std::net::SocketAddr;
 
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::routing::get;
 use axum::{Json, Router};
 use membership::node::LocalNode;
 use membership::state::MemberTable;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tracing::warn;
 
@@ -25,6 +25,12 @@ struct Api {
     node: LocalNode,
     table: MemberTable,
     backend_port: u16,
+}
+
+/// `GET /backends?tag=web`: only members with that tag, like `--proxy-to`.
+#[derive(Deserialize)]
+struct Filter {
+    tag: Option<String>,
 }
 
 /// One entry in `GET /backends`. An object rather than a bare string, so a
@@ -67,10 +73,15 @@ pub async fn start_api(
 /// A member whose app went down a moment ago may still be listed: the news
 /// takes a second or two to arrive. A caller should treat a refused connect
 /// the way the built-in proxy does, and try the next one.
-async fn backends(State(api): State<Api>) -> Json<Vec<Backend>> {
-    let backends = proxy::backends(&api.node, &api.table, api.backend_port)
-        .into_iter()
-        .map(|addr| Backend { addr })
-        .collect();
+async fn backends(State(api): State<Api>, Query(filter): Query<Filter>) -> Json<Vec<Backend>> {
+    let backends = proxy::backends(
+        &api.node,
+        &api.table,
+        api.backend_port,
+        filter.tag.as_deref(),
+    )
+    .into_iter()
+    .map(|addr| Backend { addr })
+    .collect();
     Json(backends)
 }
